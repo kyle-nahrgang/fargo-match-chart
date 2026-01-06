@@ -100,3 +100,47 @@
   margin-bottom: 5px;
 }
 
+.match-info {
+  margin-bottom: 20px;
+}
+
+.match-id-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.match-id-display span {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.match-id-display strong {
+  color: #667eea;
+  font-weight: 700;
+}
+
+.new-match-btn {
+  padding: 10px 20px;
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.new-match-btn:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
