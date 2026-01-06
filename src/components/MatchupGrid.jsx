@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,6 +13,8 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
   const { team1Name, team2Name, team1Players, team2Players, matchupData } = data;
   const maxPoints = 1900;
   const numMatches = 4;
+  const [highlightedRow, setHighlightedRow] = useState(null);
+  const [highlightedColumn, setHighlightedColumn] = useState(null);
 
   // Extract probability value from odds object
   const extractProbability = (odds) => {
@@ -272,6 +274,14 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
       return; // Don't allow clicking disabled matches
     }
 
+    // Clear row/column highlights when clicking a cell
+    if (highlightedRow === team1Index) {
+      setHighlightedRow(null);
+    }
+    if (highlightedColumn === team2Index) {
+      setHighlightedColumn(null);
+    }
+
     const isSelected = isMatchSelected(team1Index, team2Index);
 
     if (isSelected) {
@@ -282,6 +292,26 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
     } else {
       // Select
       onMatchSelect([...selectedMatches, { team1Index, team2Index }]);
+    }
+  };
+
+  // Handle row header click - highlight/unhighlight the row
+  const handleRowHeaderClick = (rowIndex) => {
+    if (highlightedRow === rowIndex) {
+      setHighlightedRow(null);
+    } else {
+      setHighlightedRow(rowIndex);
+      setHighlightedColumn(null); // Clear column highlight when row is highlighted
+    }
+  };
+
+  // Handle column header click - highlight/unhighlight the column
+  const handleColumnHeaderClick = (colIndex) => {
+    if (highlightedColumn === colIndex) {
+      setHighlightedColumn(null);
+    } else {
+      setHighlightedColumn(colIndex);
+      setHighlightedRow(null); // Clear row highlight when column is highlighted
     }
   };
 
@@ -306,9 +336,14 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
           const rowIndex = parseInt(info.row.id);
           const player = team1Players[rowIndex];
           const isPlayerDisabled = selectedTeam1Indices.has(rowIndex);
+          const isHighlighted = highlightedRow === rowIndex;
 
           return (
-            <div className={`row-header-cell ${isPlayerDisabled ? 'player-disabled' : ''}`}>
+            <div
+              className={`row-header-cell ${isPlayerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+              onClick={() => handleRowHeaderClick(rowIndex)}
+              style={{ cursor: 'pointer' }}
+            >
               <div className={`player-name ${isPlayerDisabled ? 'disabled' : ''}`}>{player.name}</div>
               <div className={`player-rating ${isPlayerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
             </div>
@@ -325,18 +360,27 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
 
       cols.push(
         columnHelper.accessor(`matchup_${index}`, {
-          header: () => (
-            <div className={`col-header-cell ${isPlayerDisabled ? 'player-disabled' : ''}`}>
-              <div className={`player-name ${isPlayerDisabled ? 'disabled' : ''}`}>{player.name}</div>
-              <div className={`player-rating ${isPlayerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
-            </div>
-          ),
+          header: () => {
+            const isHighlighted = highlightedColumn === index;
+            return (
+              <div
+                className={`col-header-cell ${isPlayerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+                onClick={() => handleColumnHeaderClick(index)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className={`player-name ${isPlayerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+                <div className={`player-rating ${isPlayerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
+              </div>
+            );
+          },
           cell: (info) => {
             const rowIndex = parseInt(info.row.id);
             const matchup = matchupData[rowIndex]?.[index];
+            const isRowHighlighted = highlightedRow === rowIndex;
+            const isColHighlighted = highlightedColumn === index;
 
             if (!matchup || !matchup.race || matchup.race === null) {
-              return <div className="matchup-cell empty">
+              return <div className={`matchup-cell empty ${isRowHighlighted || isColHighlighted ? 'highlighted' : ''}`}>
                 <div className="cell-top"></div>
                 <div className="cell-bottom"></div>
               </div>;
@@ -350,7 +394,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
 
             return (
               <div
-                className={`matchup-cell split-cell ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                className={`matchup-cell split-cell ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${isRowHighlighted || isColHighlighted ? 'highlighted' : ''}`}
                 onClick={() => handleMatchClick(rowIndex, index)}
                 style={{ cursor: isDisabled && !isSelected ? 'not-allowed' : 'pointer' }}
               >
@@ -375,7 +419,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
     });
 
     return cols;
-  }, [team1Players, team2Players, matchupData, selectedMatches]);
+  }, [team1Players, team2Players, matchupData, selectedMatches, highlightedRow, highlightedColumn]);
 
   // Create table data
   const tableData = useMemo(() => {
@@ -399,41 +443,55 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    style={{
-                      width: header.getSize(),
-                      minWidth: header.getSize(),
-                    }}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </th>
-                ))}
+                {headerGroup.headers.map((header, headerIndex) => {
+                  const colIndex = headerIndex > 0 ? headerIndex - 1 : null; // First header is corner cell
+                  const isColHighlighted = colIndex !== null && highlightedColumn === colIndex;
+                  return (
+                    <th
+                      key={header.id}
+                      className={isColHighlighted ? 'highlighted-column' : ''}
+                      style={{
+                        width: header.getSize(),
+                        minWidth: header.getSize(),
+                      }}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    style={{
-                      width: cell.column.getSize(),
-                      minWidth: cell.column.getSize(),
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {table.getRowModel().rows.map((row) => {
+              const rowIndex = parseInt(row.id);
+              const isRowHighlighted = highlightedRow === rowIndex;
+              return (
+                <tr key={row.id} className={isRowHighlighted ? 'highlighted-row' : ''}>
+                  {row.getVisibleCells().map((cell, cellIndex) => {
+                    const colIndex = cellIndex > 0 ? cellIndex - 1 : null; // First cell is row header
+                    const isColHighlighted = colIndex !== null && highlightedColumn === colIndex;
+                    return (
+                      <td
+                        key={cell.id}
+                        className={isColHighlighted ? 'highlighted-column' : ''}
+                        style={{
+                          width: cell.column.getSize(),
+                          minWidth: cell.column.getSize(),
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

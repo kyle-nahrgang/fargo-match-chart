@@ -93,6 +93,16 @@
   flex-direction: column;
   justify-content: center;
   box-sizing: border-box;
+  transition: background-color 0.2s;
+}
+
+.row-header-cell:hover {
+  background-color: #e9ecef;
+}
+
+.row-header-cell.highlighted {
+  background-color: #fff3cd;
+  border-left: 3px solid #ffc107;
 }
 
 .row-header-cell .player-name {
@@ -117,6 +127,16 @@
   max-height: 80px;
   padding: 8px 4px;
   white-space: normal;
+  transition: background-color 0.2s;
+}
+
+.col-header-cell:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.col-header-cell.highlighted {
+  background-color: rgba(255, 243, 205, 0.9);
+  border-bottom: 3px solid #ffc107;
 }
 
 .col-header-cell .player-name {
@@ -289,6 +309,44 @@
 .matchup-cell.disabled.selected {
   opacity: 0.6;
   pointer-events: auto;
+}
+
+.matchup-cell.highlighted {
+  background-color: rgba(255, 243, 205, 0.3);
+}
+
+.matchup-cell.empty.highlighted {
+  background-color: rgba(255, 243, 205, 0.4);
+}
+
+.matchup-table tbody tr.highlighted-row {
+  background-color: rgba(255, 243, 205, 0.2);
+  outline: 3px solid #ffc107;
+  outline-offset: -3px;
+}
+
+.matchup-table thead tr th.highlighted-column,
+.matchup-table tbody tr td.highlighted-column {
+  background-color: rgba(255, 243, 205, 0.2);
+}
+
+.matchup-table thead tr th.highlighted-column {
+  border-top: 3px solid #ffc107;
+  border-left: 3px solid #ffc107;
+  border-right: 3px solid #ffc107;
+}
+
+.matchup-table tbody tr td.highlighted-column {
+  border-left: 3px solid #ffc107;
+  border-right: 3px solid #ffc107;
+}
+
+.matchup-table tbody tr:first-child td.highlighted-column {
+  border-top: 3px solid #ffc107;
+}
+
+.matchup-table tbody tr:last-child td.highlighted-column {
+  border-bottom: 3px solid #ffc107;
 }
 
 .matchup-cell .cell-top {
