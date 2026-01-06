@@ -298,7 +298,7 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
       };
     }).filter(lineup => lineup.bestWinProb > 0)
       .sort((a, b) => b.bestWinProb - a.bestWinProb)
-      .slice(0, 10);
+      .slice(0, 3);
 
     // Generate team 2 lineups
     const team2Lineups = validTeam2Combinations.map(combo => {
@@ -320,7 +320,7 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
       };
     }).filter(lineup => lineup.bestWinProb > 0)
       .sort((a, b) => b.bestWinProb - a.bestWinProb)
-      .slice(0, 10);
+      .slice(0, 3);
 
     return { team1Lineups, team2Lineups };
   }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches]);
@@ -358,10 +358,6 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
   return (
     <div className="optimal-lineups-container">
       <h2>Optimal Lineups</h2>
-      <p className="lineup-constraints">
-        Max {maxPoints} points per team across {numMatches} matches
-      </p>
-
       <div className="lineups-columns">
         <div className="lineup-column">
           <h3>{team1Name}</h3>
