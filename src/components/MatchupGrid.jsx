@@ -80,7 +80,16 @@ function MatchupGrid({ data }) {
   const columns = useMemo(() => {
     const cols = [
       columnHelper.accessor('player', {
-        header: '',
+        header: () => (
+          <div className="corner-cell split-cell">
+            <div className="cell-top">
+              <div className="corner-label">Away</div>
+            </div>
+            <div className="cell-bottom">
+              <div className="corner-label">Home</div>
+            </div>
+          </div>
+        ),
         cell: (info) => {
           const rowIndex = parseInt(info.row.id);
           const player = team1Players[rowIndex];
