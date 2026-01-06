@@ -127,11 +127,25 @@
   hyphens: auto;
 }
 
+.col-header-cell .player-name.disabled,
+.row-header-cell .player-name.disabled {
+  color: #999;
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .col-header-cell .player-rating {
   font-size: clamp(0.65rem, 1vw, 0.75rem);
   opacity: 0.9;
   font-weight: normal;
   text-align: center;
+}
+
+.col-header-cell .player-rating.disabled,
+.row-header-cell .player-rating.disabled {
+  color: #999;
+  font-style: italic;
+  opacity: 0.6;
 }
 
 .corner-cell {

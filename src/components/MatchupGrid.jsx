@@ -287,6 +287,9 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
 
   // Create columns dynamically
   const columns = useMemo(() => {
+    const selectedTeam1Indices = new Set(selectedMatches.map(m => m.team1Index));
+    const selectedTeam2Indices = new Set(selectedMatches.map(m => m.team2Index));
+
     const cols = [
       columnHelper.accessor('player', {
         header: () => (
@@ -302,10 +305,12 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
         cell: (info) => {
           const rowIndex = parseInt(info.row.id);
           const player = team1Players[rowIndex];
+          const isPlayerDisabled = selectedTeam1Indices.has(rowIndex);
+
           return (
-            <div className="row-header-cell">
-              <div className="player-name">{player.name}</div>
-              <div className="player-rating">Rating: {player.rating}</div>
+            <div className={`row-header-cell ${isPlayerDisabled ? 'player-disabled' : ''}`}>
+              <div className={`player-name ${isPlayerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+              <div className={`player-rating ${isPlayerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
             </div>
           );
         },
@@ -316,12 +321,14 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
 
     // Add a column for each team 2 player
     team2Players.forEach((player, index) => {
+      const isPlayerDisabled = selectedTeam2Indices.has(index);
+
       cols.push(
         columnHelper.accessor(`matchup_${index}`, {
           header: () => (
-            <div className="col-header-cell">
-              <div className="player-name">{player.name}</div>
-              <div className="player-rating">Rating: {player.rating}</div>
+            <div className={`col-header-cell ${isPlayerDisabled ? 'player-disabled' : ''}`}>
+              <div className={`player-name ${isPlayerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+              <div className={`player-rating ${isPlayerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
             </div>
           ),
           cell: (info) => {
