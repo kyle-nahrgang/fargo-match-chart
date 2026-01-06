@@ -76,80 +76,17 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
     return null;
   };
 
-  // Generate all possible lineups
-  const generateLineups = useMemo(() => {
-    // Find optimal matching for a given set of players (prioritizing win probability)
-    const findOptimalMatching = (team1Selection, team2Selection) => {
-      // Generate all possible matchings (permutations of team2 against team1)
-      const team2Perms = permutations(team2Selection);
-      let bestMatching = null;
-      let bestWinProb = -1;
-
-      for (const team2Perm of team2Perms) {
-        const matchups = [];
-        let totalWinProb = 0;
-        let valid = true;
-
-        for (let i = 0; i < team1Selection.length; i++) {
-          const p1Idx = team1Selection[i].index;
-          const p2Idx = team2Perm[i].index;
-          const matchup = matchupData[p1Idx]?.[p2Idx];
-
-          if (!matchup || !matchup.race) {
-            valid = false;
-            break;
-          }
-
-          const prob = extractProbability(matchup.odds);
-          if (prob === null) {
-            valid = false;
-            break;
-          }
-
-          const p1Rating = team1Players[p1Idx].rating;
-          const p2Rating = team2Players[p2Idx].rating;
-          const points = p1Rating + p2Rating;
-
-          matchups.push({
-            team1Player: team1Players[p1Idx],
-            team2Player: team2Players[p2Idx],
-            race: matchup.race,
-            winProb: prob,
-            points: points
-          });
-
-          totalWinProb += prob;
-        }
-
-        if (valid && totalWinProb > bestWinProb) {
-          bestWinProb = totalWinProb;
-          const team1TotalPoints = team1Selection.reduce((sum, p) => sum + p.rating, 0);
-          const team2TotalPoints = team2Selection.reduce((sum, p) => sum + p.rating, 0);
-
-          bestMatching = {
-            matchups,
-            team1Points: team1TotalPoints,
-            team2Points: team2TotalPoints,
-            totalPoints: team1TotalPoints + team2TotalPoints,
-            totalWinProb,
-            avgWinProb: totalWinProb / numMatches
-          };
-        }
-      }
-
-      return bestMatching;
-    };
+  // Generate optimal lineups for each team separately
+  const generateTeamLineups = useMemo(() => {
     if (!team1Players || !team2Players || !matchupData) {
-      return [];
+      return { team1Lineups: [], team2Lineups: [] };
     }
 
     // Check if we have enough players
     if (team1Players.length < numMatches || team2Players.length < numMatches) {
       console.log(`Not enough players: Team 1 has ${team1Players.length}, Team 2 has ${team2Players.length}, need ${numMatches} each`);
-      return [];
+      return { team1Lineups: [], team2Lineups: [] };
     }
-
-    const lineups = [];
 
     // Create arrays with indices for easier combination generation
     const team1WithIndices = team1Players.map((p, i) => ({ ...p, index: i }));
@@ -172,26 +109,110 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
 
     console.log(`Team 1: ${team1Players.length} players, ${validTeam1Combinations.length} valid combinations (<=${maxPoints} points)`);
     console.log(`Team 2: ${team2Players.length} players, ${validTeam2Combinations.length} valid combinations (<=${maxPoints} points)`);
-    console.log(`Total combinations to check: ${validTeam1Combinations.length * validTeam2Combinations.length}`);
 
-    console.log(`Team 1: ${team1Players.length} players, ${team1Combinations.length} combinations of ${numMatches}`);
-    console.log(`Team 2: ${team2Players.length} players, ${team2Combinations.length} combinations of ${numMatches}`);
-    console.log(`Total combinations to check: ${team1Combinations.length * team2Combinations.length}`);
+    // Calculate best matchup win probability for each team's lineup
+    const calculateBestMatchupWinProb = (teamSelection, isTeam1) => {
+      let bestTotalWinProb = -1;
+      let bestMatchups = null;
 
-    // For each valid combination of team selections, find optimal matching
-    for (const team1Selection of validTeam1Combinations) {
-      for (const team2Selection of validTeam2Combinations) {
-        const matching = findOptimalMatching(team1Selection, team2Selection);
-        if (matching) {
-          lineups.push(matching);
+      // Try against all valid combinations of the opposing team
+      const opposingCombinations = isTeam1 ? validTeam2Combinations : validTeam1Combinations;
+
+      for (const opposingSelection of opposingCombinations) {
+        const team2Perms = permutations(opposingSelection);
+        let bestPermWinProb = -1;
+        let bestPermMatchups = null;
+
+        for (const team2Perm of team2Perms) {
+          const matchups = [];
+          let totalWinProb = 0;
+          let valid = true;
+
+          for (let i = 0; i < teamSelection.length; i++) {
+            const p1Idx = isTeam1 ? teamSelection[i].index : team2Perm[i].index;
+            const p2Idx = isTeam1 ? team2Perm[i].index : teamSelection[i].index;
+            const matchup = matchupData[p1Idx]?.[p2Idx];
+
+            if (!matchup || !matchup.race) {
+              valid = false;
+              break;
+            }
+
+            const prob = extractProbability(matchup.odds);
+            if (prob === null) {
+              valid = false;
+              break;
+            }
+
+            // For team 1, use the win prob as-is; for team 2, use inverse
+            const winProb = isTeam1 ? prob : (1 - prob);
+            totalWinProb += winProb;
+
+            // Store matchup info - map by index for easier lookup
+            const teamPlayer = isTeam1 ? team1Players[p1Idx] : team2Players[p2Idx];
+            const opponentPlayer = isTeam1 ? team2Players[p2Idx] : team1Players[p1Idx];
+            const playerIndex = isTeam1 ? p1Idx : p2Idx;
+
+            matchups.push({
+              playerIndex: playerIndex,
+              player: teamPlayer,
+              opponent: opponentPlayer,
+              winProb: winProb,
+              race: matchup.race
+            });
+          }
+
+          if (valid && totalWinProb > bestPermWinProb) {
+            bestPermWinProb = totalWinProb;
+            bestPermMatchups = matchups;
+          }
+        }
+
+        if (bestPermWinProb > bestTotalWinProb) {
+          bestTotalWinProb = bestPermWinProb;
+          bestMatchups = bestPermMatchups;
         }
       }
-    }
 
-    console.log(`Found ${lineups.length} valid lineups`);
+      return bestTotalWinProb >= 0 ? { winProb: bestTotalWinProb, matchups: bestMatchups } : null;
+    };
 
-    // Sort by total win probability (descending)
-    return lineups.sort((a, b) => b.totalWinProb - a.totalWinProb).slice(0, 10);
+    // Generate Team 1 lineups
+    const team1Lineups = validTeam1Combinations.map(combo => {
+      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      const result = calculateBestMatchupWinProb(combo, true);
+
+      return {
+        players: combo.map(p => team1Players[p.index]),
+        totalPoints,
+        bestWinProb: result ? result.winProb : 0,
+        avgWinProb: result ? result.winProb / numMatches : 0,
+        matchups: result ? result.matchups : []
+      };
+    }).filter(lineup => lineup.bestWinProb > 0)
+      .sort((a, b) => b.bestWinProb - a.bestWinProb)
+      .slice(0, 10);
+
+    // Generate Team 2 lineups
+    const team2Lineups = validTeam2Combinations.map(combo => {
+      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      const result = calculateBestMatchupWinProb(combo, false);
+
+      return {
+        players: combo.map(p => team2Players[p.index]),
+        totalPoints,
+        bestWinProb: result ? result.winProb : 0,
+        avgWinProb: result ? result.winProb / numMatches : 0,
+        matchups: result ? result.matchups : []
+      };
+    }).filter(lineup => lineup.bestWinProb > 0)
+      .sort((a, b) => b.bestWinProb - a.bestWinProb)
+      .slice(0, 10);
+
+    console.log(`Found ${team1Lineups.length} optimal lineups for Team 1`);
+    console.log(`Found ${team2Lineups.length} optimal lineups for Team 2`);
+
+    return { team1Lineups, team2Lineups };
   }, [team1Players, team2Players, matchupData, maxPoints, numMatches]);
 
   if (!team1Players || !team2Players || !matchupData) {
@@ -203,7 +224,9 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
     );
   }
 
-  if (generateLineups.length === 0) {
+  const { team1Lineups, team2Lineups } = generateTeamLineups;
+
+  if (team1Lineups.length === 0 && team2Lineups.length === 0) {
     return (
       <div className="optimal-lineups-container">
         <h2>Optimal Lineups</h2>
@@ -224,56 +247,115 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
 
   return (
     <div className="optimal-lineups-container">
-      <h2>Top Optimal Lineups</h2>
+      <h2>Optimal Lineups</h2>
       <p className="lineup-constraints">
         Max {maxPoints} points per team across {numMatches} matches
       </p>
 
-      <div className="lineups-list">
-        {generateLineups.map((lineup, idx) => (
-          <div key={idx} className="lineup-card">
-            <div className="lineup-header">
-              <span className="lineup-rank">#{idx + 1}</span>
-              <div className="lineup-stats">
-                <span className="stat">
-                  <strong>Total Win Prob:</strong> {(lineup.totalWinProb * 100).toFixed(1)}%
-                </span>
-                <span className="stat">
-                  <strong>Avg Win Prob:</strong> {(lineup.avgWinProb * 100).toFixed(1)}%
-                </span>
-                <span className="stat">
-                  <strong>Team 1 Points:</strong> {lineup.team1Points} / {maxPoints}
-                </span>
-                <span className="stat">
-                  <strong>Team 2 Points:</strong> {lineup.team2Points} / {maxPoints}
-                </span>
-              </div>
-            </div>
-
-            <div className="matchups-list">
-              {lineup.matchups.map((matchup, mIdx) => (
-                <div key={mIdx} className="matchup-item">
-                  <div className="matchup-players">
-                    <span className="player-name">
-                      {matchup.team1Player.name} ({matchup.team1Player.rating})
-                    </span>
-                    <span className="vs">vs</span>
-                    <span className="player-name">
-                      {matchup.team2Player.name} ({matchup.team2Player.rating})
-                    </span>
+      <div className="lineups-columns">
+        <div className="lineup-column">
+          <h3>Team 1 Optimal Lineups</h3>
+          {team1Lineups.length === 0 ? (
+            <p className="no-lineups">No valid lineups found for Team 1</p>
+          ) : (
+            <div className="lineups-list">
+              {team1Lineups.map((lineup, idx) => (
+                <div key={idx} className="lineup-card">
+                  <div className="lineup-header">
+                    <span className="lineup-rank">#{idx + 1}</span>
+                    <div className="lineup-stats">
+                      <span className="stat">
+                        <strong>Best Win Prob:</strong> {(lineup.bestWinProb * 100).toFixed(1)}%
+                      </span>
+                      <span className="stat">
+                        <strong>Avg Win Prob:</strong> {(lineup.avgWinProb * 100).toFixed(1)}%
+                      </span>
+                      <span className="stat">
+                        <strong>Total Points:</strong> {lineup.totalPoints} / {maxPoints}
+                      </span>
+                    </div>
                   </div>
-                  <div className="matchup-details">
-                    <span className="race">Race: {matchup.race}</span>
-                    <span className={`win-prob ${matchup.winProb > 0.5 ? 'bold' : ''}`}>
-                      Win Prob: {(matchup.winProb * 100).toFixed(1)}%
-                    </span>
-                    <span className="points">Points: {matchup.points}</span>
+
+                  <div className="players-list">
+                    {lineup.players.map((player, pIdx) => {
+                      // Find matchup by index position (players are in same order as matchups)
+                      const matchup = lineup.matchups[pIdx];
+                      return (
+                        <div key={pIdx} className="player-item">
+                          <div className="player-info">
+                            <span className="player-name">{player.name}</span>
+                            <span className="player-rating">Rating: {player.rating}</span>
+                          </div>
+                          {matchup && (
+                            <div className="matchup-info">
+                              <span className="vs-label">vs</span>
+                              <span className="opponent-name">{matchup.opponent.name}</span>
+                              <span className="opponent-rating">({matchup.opponent.rating})</span>
+                              <span className="matchup-winprob">{(matchup.winProb * 100).toFixed(1)}%</span>
+                              <span className="matchup-race">{matchup.race}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+          )}
+        </div>
+
+        <div className="lineup-column">
+          <h3>Team 2 Optimal Lineups</h3>
+          {team2Lineups.length === 0 ? (
+            <p className="no-lineups">No valid lineups found for Team 2</p>
+          ) : (
+            <div className="lineups-list">
+              {team2Lineups.map((lineup, idx) => (
+                <div key={idx} className="lineup-card">
+                  <div className="lineup-header">
+                    <span className="lineup-rank">#{idx + 1}</span>
+                    <div className="lineup-stats">
+                      <span className="stat">
+                        <strong>Best Win Prob:</strong> {(lineup.bestWinProb * 100).toFixed(1)}%
+                      </span>
+                      <span className="stat">
+                        <strong>Avg Win Prob:</strong> {(lineup.avgWinProb * 100).toFixed(1)}%
+                      </span>
+                      <span className="stat">
+                        <strong>Total Points:</strong> {lineup.totalPoints} / {maxPoints}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="players-list">
+                    {lineup.players.map((player, pIdx) => {
+                      // Find matchup by index position (players are in same order as matchups)
+                      const matchup = lineup.matchups[pIdx];
+                      return (
+                        <div key={pIdx} className="player-item">
+                          <div className="player-info">
+                            <span className="player-name">{player.name}</span>
+                            <span className="player-rating">Rating: {player.rating}</span>
+                          </div>
+                          {matchup && (
+                            <div className="matchup-info">
+                              <span className="vs-label">vs</span>
+                              <span className="opponent-name">{matchup.opponent.name}</span>
+                              <span className="opponent-rating">({matchup.opponent.rating})</span>
+                              <span className="matchup-winprob">{(matchup.winProb * 100).toFixed(1)}%</span>
+                              <span className="matchup-race">{matchup.race}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

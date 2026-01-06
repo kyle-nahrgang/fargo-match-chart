@@ -22,6 +22,22 @@
   text-align: center;
 }
 
+.lineups-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.lineup-column h3 {
+  font-size: 1.3rem;
+  color: #333;
+  margin-bottom: 15px;
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #667eea;
+}
+
 .lineups-list {
   display: flex;
   flex-direction: column;
@@ -69,64 +85,84 @@
   margin-right: 5px;
 }
 
-.matchups-list {
+.players-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.matchup-item {
+.player-item {
   background: #f8f9fa;
   border-radius: 6px;
-  padding: 12px 15px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   border-left: 3px solid #667eea;
 }
 
-.matchup-players {
+.player-info {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
 }
 
-.matchup-players .player-name {
+.player-item .player-name {
   font-weight: 600;
   color: #333;
   font-size: 0.95rem;
 }
 
-.matchup-players .vs {
-  color: #999;
+.player-item .player-rating {
+  color: #666;
   font-size: 0.85rem;
 }
 
-.matchup-details {
+.matchup-info {
   display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #e0e0e0;
   font-size: 0.85rem;
+  flex-wrap: wrap;
 }
 
-.matchup-details .race {
-  color: #667eea;
+.matchup-info .vs-label {
+  color: #999;
   font-weight: 600;
 }
 
-.matchup-details .win-prob {
-  color: #555;
+.matchup-info .opponent-name {
+  font-weight: 600;
+  color: #667eea;
 }
 
-.matchup-details .win-prob.bold {
-  font-weight: 700;
-  color: #333;
-}
-
-.matchup-details .points {
+.matchup-info .opponent-rating {
   color: #666;
 }
 
+.matchup-info .matchup-winprob {
+  color: #333;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.matchup-info .matchup-race {
+  color: #667eea;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
 /* Responsive */
+@media (max-width: 1200px) {
+  .lineups-columns {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
 @media (max-width: 768px) {
   .lineup-header {
     flex-direction: column;
@@ -139,14 +175,9 @@
     gap: 8px;
   }
 
-  .matchup-players {
+  .player-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: 5px;
-  }
-
-  .matchup-details {
-    flex-direction: column;
     gap: 5px;
   }
 }
