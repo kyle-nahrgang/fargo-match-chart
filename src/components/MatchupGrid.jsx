@@ -206,24 +206,18 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
     return false;
   };
 
-  // Check if a match can be selected (wouldn't exceed point limit)
-  const isMatchDisabled = (team1Index, team2Index) => {
-    const player1 = team1Players[team1Index];
-    const player2 = team2Players[team2Index];
-
-    if (!player1 || !player2) return true;
-
-    // Calculate current points used by selected matches
+  // Check if a player is disabled (selected or cannot be selected due to 1900 limit)
+  const isPlayerDisabled = (playerIndex, isTeam1) => {
     const selectedTeam1Indices = new Set(selectedMatches.map(m => m.team1Index));
     const selectedTeam2Indices = new Set(selectedMatches.map(m => m.team2Index));
+    const selectedIndices = isTeam1 ? selectedTeam1Indices : selectedTeam2Indices;
+    const players = isTeam1 ? team1Players : team2Players;
+    const player = players[playerIndex];
 
-    // If this exact match is already selected, allow deselecting
-    if (isMatchSelected(team1Index, team2Index)) {
-      return false;
-    }
+    if (!player) return true;
 
-    // If either player is already selected in another match, disable this match
-    if (selectedTeam1Indices.has(team1Index) || selectedTeam2Indices.has(team2Index)) {
+    // If player is already selected, they are disabled
+    if (selectedIndices.has(playerIndex)) {
       return true;
     }
 
@@ -232,38 +226,63 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
       return true;
     }
 
-    // Calculate points if we add this match
-    const team1Points = selectedMatches.reduce((sum, m) => {
-      return sum + (team1Players[m.team1Index]?.rating || 0);
+    // Calculate current points used by selected matches
+    const teamPoints = selectedMatches.reduce((sum, m) => {
+      return sum + (isTeam1
+        ? (team1Players[m.team1Index]?.rating || 0)
+        : (team2Players[m.team2Index]?.rating || 0));
     }, 0);
 
-    const team2Points = selectedMatches.reduce((sum, m) => {
-      return sum + (team2Players[m.team2Index]?.rating || 0);
-    }, 0);
-
-    // Check if adding this match would exceed limits
-    const newTeam1Points = team1Points + player1.rating;
-    const newTeam2Points = team2Points + player2.rating;
-
-    if (newTeam1Points > maxPoints || newTeam2Points > maxPoints) {
+    // Check if adding this player would exceed the 1900 limit
+    const newTeamPoints = teamPoints + player.rating;
+    if (newTeamPoints > maxPoints) {
       return true;
     }
 
-    // Check if selecting this match would make it impossible to complete a valid lineup
-    const newSelectedTeam1Indices = new Set([...selectedTeam1Indices, team1Index]);
-    const newSelectedTeam2Indices = new Set([...selectedTeam2Indices, team2Index]);
+    // Check if selecting this player would make it impossible to complete a valid lineup
+    const newSelectedIndices = new Set([...selectedIndices, playerIndex]);
     const newRemainingMatches = numMatches - selectedMatches.length - 1;
-    const newRemainingTeam1Points = maxPoints - newTeam1Points;
-    const newRemainingTeam2Points = maxPoints - newTeam2Points;
+    const newRemainingPoints = maxPoints - newTeamPoints;
 
-    // Check feasibility
-    return !hasFeasibleSolution(
-      newSelectedTeam1Indices,
-      newSelectedTeam2Indices,
-      newRemainingMatches,
-      newRemainingTeam1Points,
-      newRemainingTeam2Points
-    );
+    // For feasibility check, we need to check both teams
+    if (isTeam1) {
+      const selectedTeam2IndicesForCheck = new Set(selectedMatches.map(m => m.team2Index));
+      const remainingTeam2Points = maxPoints - selectedMatches.reduce((sum, m) => {
+        return sum + (team2Players[m.team2Index]?.rating || 0);
+      }, 0);
+
+      return !hasFeasibleSolution(
+        newSelectedIndices,
+        selectedTeam2IndicesForCheck,
+        newRemainingMatches,
+        newRemainingPoints,
+        remainingTeam2Points
+      );
+    } else {
+      const selectedTeam1IndicesForCheck = new Set(selectedMatches.map(m => m.team1Index));
+      const remainingTeam1Points = maxPoints - selectedMatches.reduce((sum, m) => {
+        return sum + (team1Players[m.team1Index]?.rating || 0);
+      }, 0);
+
+      return !hasFeasibleSolution(
+        selectedTeam1IndicesForCheck,
+        newSelectedIndices,
+        newRemainingMatches,
+        remainingTeam1Points,
+        newRemainingPoints
+      );
+    }
+  };
+
+  // Check if a match is disabled (if either player is disabled)
+  const isMatchDisabled = (team1Index, team2Index) => {
+    // If this exact match is already selected, allow deselecting
+    if (isMatchSelected(team1Index, team2Index)) {
+      return false;
+    }
+
+    // Check if either player is disabled
+    return isPlayerDisabled(team1Index, true) || isPlayerDisabled(team2Index, false);
   };
 
   // Handle match cell click
@@ -317,9 +336,6 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
 
   // Create columns dynamically
   const columns = useMemo(() => {
-    const selectedTeam1Indices = new Set(selectedMatches.map(m => m.team1Index));
-    const selectedTeam2Indices = new Set(selectedMatches.map(m => m.team2Index));
-
     const cols = [
       columnHelper.accessor('player', {
         header: () => (
@@ -335,17 +351,17 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
         cell: (info) => {
           const rowIndex = parseInt(info.row.id);
           const player = team1Players[rowIndex];
-          const isPlayerDisabled = selectedTeam1Indices.has(rowIndex);
+          const playerDisabled = isPlayerDisabled(rowIndex, true);
           const isHighlighted = highlightedRow === rowIndex;
 
           return (
             <div
-              className={`row-header-cell ${isPlayerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+              className={`row-header-cell ${playerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
               onClick={() => handleRowHeaderClick(rowIndex)}
               style={{ cursor: 'pointer' }}
             >
-              <div className={`player-name ${isPlayerDisabled ? 'disabled' : ''}`}>{player.name}</div>
-              <div className={`player-rating ${isPlayerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
+              <div className={`player-name ${playerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+              <div className={`player-rating ${playerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
             </div>
           );
         },
@@ -356,7 +372,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
 
     // Add a column for each team 2 player
     team2Players.forEach((player, index) => {
-      const isPlayerDisabled = selectedTeam2Indices.has(index);
+      const playerDisabled = isPlayerDisabled(index, false);
 
       cols.push(
         columnHelper.accessor(`matchup_${index}`, {
@@ -364,12 +380,12 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
             const isHighlighted = highlightedColumn === index;
             return (
               <div
-                className={`col-header-cell ${isPlayerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+                className={`col-header-cell ${playerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
                 onClick={() => handleColumnHeaderClick(index)}
                 style={{ cursor: 'pointer' }}
               >
-                <div className={`player-name ${isPlayerDisabled ? 'disabled' : ''}`}>{player.name}</div>
-                <div className={`player-rating ${isPlayerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
+                <div className={`player-name ${playerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+                <div className={`player-rating ${playerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
               </div>
             );
           },
