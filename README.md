@@ -92,6 +92,27 @@ fargo/
 - Node.js (v16 or higher)
 - npm
 
+## Deployment
+
+### GitHub Pages
+
+The app is configured to deploy to GitHub Pages automatically via GitHub Actions:
+
+1. Push your code to the `main` branch
+2. GitHub Actions will automatically build and deploy to GitHub Pages
+3. Enable GitHub Pages in your repository settings:
+   - Go to Settings → Pages
+   - Source: GitHub Actions
+
+The app will be available at `https://[your-username].github.io/[repository-name]/`
+
+### Manual Deployment
+
+1. Build the app: `npm run build`
+2. The `dist` folder contains the static files ready for deployment
+3. Deploy the `dist` folder to any static hosting service
+
 ## API Endpoints
 
-- `GET /api/matchups/:matchId` - Fetches matchup data for a given match ID
+- `GET /api/matchups/:matchId` - Fetches matchup data for a given match ID (development only)
+- In production (GitHub Pages), API calls are made directly to the FargoRate API

@@ -21,13 +21,24 @@ function App() {
     setData(null);
 
     try {
-      const response = await fetch(`/api/matchups/${matchId.trim()}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch matchup data');
+      // Check if we're in development (has backend server) or production (direct API calls)
+      const useBackend = import.meta.env.DEV || window.location.hostname === 'localhost';
+
+      if (useBackend) {
+        // Use backend server in development
+        const response = await fetch(`/api/matchups/${matchId.trim()}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch matchup data');
+        }
+        const result = await response.json();
+        setData(result);
+      } else {
+        // Call API directly in production (GitHub Pages)
+        const { getMatchupData } = await import('./api');
+        const result = await getMatchupData(matchId.trim());
+        setData(result);
       }
-      const result = await response.json();
-      setData(result);
     } catch (err) {
       setError(err.message);
     } finally {

@@ -4,3 +4,6 @@ dist/
 *.log
 .env
 .env.local
+
+# Keep .nojekyll for GitHub Pages
+!.nojekyll
