@@ -32,12 +32,23 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
-        env:
-          # Extract repository name and set as base path
-          # For project pages: /repo-name/
-          # For user pages: manually set VITE_BASE_PATH to '/' in repository secrets if needed
-          VITE_BASE_PATH: ${{ format('/{0}/', github.event.repository.name) }}
+        run: |
+          # Extract repository name from owner/repo format
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          # Check if this is a user/organization page (repo name matches owner name)
+          OWNER_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1)
+          if [ "$REPO_NAME" = "${OWNER_NAME}.github.io" ]; then
+            # User/organization page - use root base path
+            BASE_PATH="/"
+          else
+            # Project page - use repository name as base path
+            BASE_PATH="/$REPO_NAME/"
+          fi
+          echo "Building with VITE_BASE_PATH=$BASE_PATH"
+          VITE_BASE_PATH="$BASE_PATH" npm run build
+
+      - name: Create .nojekyll file
+        run: touch dist/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
