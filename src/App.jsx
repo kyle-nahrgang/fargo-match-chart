@@ -121,6 +121,13 @@ function App() {
           </div>
         )}
 
+        {loading && (
+          <div className="loading-spinner-container">
+            <div className="spinner"></div>
+            <p>Loading matchup data...</p>
+          </div>
+        )}
+
         {data && (
           <>
             <MatchupGrid data={data} />

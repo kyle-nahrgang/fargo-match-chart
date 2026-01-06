@@ -76,6 +76,16 @@ function MatchupGrid({ data }) {
     );
   };
 
+  const formatMatchType = (length, type) => {
+    const matchTable = "R" + length
+    var heat = ""
+    if (type == 2) {
+      heat = "🔥"
+    }
+
+    return matchTable + " " + heat
+  }
+
   // Create columns dynamically
   const columns = useMemo(() => {
     const cols = [
@@ -131,6 +141,9 @@ function MatchupGrid({ data }) {
 
             return (
               <div className="matchup-cell split-cell">
+                <div className="match-info-bar">
+                  {formatMatchType(matchup.length, matchup.type)}
+                </div>
                 <div className="cell-top">
                   <div className="race-display">{p2RaceTo}</div>
                   <div className="odds-display">{formatOdds(matchup.odds, true)}</div>

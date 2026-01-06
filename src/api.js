@@ -133,21 +133,25 @@ export async function getMatchupData(matchId) {
                   race: `${p1RaceTo}-${p2RaceTo}`,
                   odds: odds,
                   rating1,
-                  rating2
+                  rating2,
+                  length,
+                  type: typeVal
                 };
               } catch (error) {
                 return {
                   race: `${p1RaceTo}-${p2RaceTo}`,
                   odds: { error: error.message },
                   rating1,
-                  rating2
+                  rating2,
+                  length,
+                  type: typeVal
                 };
               }
             } else {
-              return { race: null, odds: null, rating1, rating2 };
+              return { race: null, odds: null, rating1, rating2, length, type: typeVal };
             }
           } catch (error) {
-            return { race: "Error", odds: { error: error.message }, rating1: null, rating2: null };
+            return { race: "Error", odds: { error: error.message }, rating1: null, rating2: null, length: null, type: null };
           }
         })()
       );

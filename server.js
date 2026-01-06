@@ -88,21 +88,15 @@ function getPlayerRating(player) {
 app.get('/api/matchups/:matchId', async (req, res) => {
     try {
         const { matchId } = req.params;
-
-        console.log(`Fetching match ${matchId}...`);
         const match = await getMatch(matchId);
 
         const team1Id = match.teamOneId;
         const team2Id = match.teamTwoId;
 
-        console.log(`Fetching players for teams...`);
         const [team1Players, team2Players] = await Promise.all([
             getTeamPlayers(team1Id),
             getTeamPlayers(team2Id)
         ]);
-
-        console.log(`Found ${team1Players.length} and ${team2Players.length} players`);
-        console.log(`Analyzing ${team1Players.length} x ${team2Players.length} potential matchups...`);
 
         // Collect matchup data
         const matchupData = [];
@@ -119,7 +113,10 @@ app.get('/api/matchups/:matchId', async (req, res) => {
 
                             // Determine race length and type
                             let length, typeVal;
-                            if (rating1 < 400 && rating2 < 400) {
+                            if (rating1 >= 500 && rating2 >= 500) {
+                                length = "5";
+                                typeVal = 1;
+                            } else if (rating1 < 400 && rating2 < 400) {
                                 length = "3";
                                 typeVal = 2;
                             } else {
@@ -148,21 +145,25 @@ app.get('/api/matchups/:matchId', async (req, res) => {
                                         race: `${p1RaceTo}-${p2RaceTo}`,
                                         odds: odds,
                                         rating1,
-                                        rating2
+                                        rating2,
+                                        length,
+                                        type: typeVal
                                     };
                                 } catch (error) {
                                     return {
                                         race: `${p1RaceTo}-${p2RaceTo}`,
                                         odds: { error: error.message },
                                         rating1,
-                                        rating2
+                                        rating2,
+                                        length,
+                                        type: typeVal
                                     };
                                 }
                             } else {
-                                return { race: null, odds: null, rating1, rating2 };
+                                return { race: null, odds: null, rating1, rating2, length, type: typeVal };
                             }
                         } catch (error) {
-                            return { race: "Error", odds: { error: error.message }, rating1: null, rating2: null };
+                            return { race: "Error", odds: { error: error.message }, rating1: null, rating2: null, length: null, type: null };
                         }
                     })()
                 );

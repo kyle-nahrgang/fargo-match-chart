@@ -107,9 +107,6 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
       return totalPoints <= maxPoints;
     });
 
-    console.log(`Team 1: ${team1Players.length} players, ${validTeam1Combinations.length} valid combinations (<=${maxPoints} points)`);
-    console.log(`Team 2: ${team2Players.length} players, ${validTeam2Combinations.length} valid combinations (<=${maxPoints} points)`);
-
     // Calculate best matchup win probability for each team's lineup
     const calculateBestMatchupWinProb = (teamSelection, isTeam1) => {
       let bestTotalWinProb = -1;
@@ -208,9 +205,6 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
     }).filter(lineup => lineup.bestWinProb > 0)
       .sort((a, b) => b.bestWinProb - a.bestWinProb)
       .slice(0, 10);
-
-    console.log(`Found ${team1Lineups.length} optimal lineups for Team 1`);
-    console.log(`Found ${team2Lineups.length} optimal lineups for Team 2`);
 
     return { team1Lineups, team2Lineups };
   }, [team1Players, team2Players, matchupData, maxPoints, numMatches]);
