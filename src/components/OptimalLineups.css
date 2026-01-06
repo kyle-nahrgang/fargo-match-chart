@@ -1,0 +1,153 @@
+.optimal-lineups-container {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.optimal-lineups-container h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.lineup-constraints {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.no-lineups {
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+.lineups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lineup-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #667eea;
+}
+
+.lineup-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.lineup-rank {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
+  min-width: 50px;
+}
+
+.lineup-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.lineup-stats .stat {
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.lineup-stats .stat strong {
+  color: #333;
+  margin-right: 5px;
+}
+
+.matchups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.matchup-item {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 12px 15px;
+  border-left: 3px solid #667eea;
+}
+
+.matchup-players {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.matchup-players .player-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.matchup-players .vs {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.matchup-details {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.matchup-details .race {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.matchup-details .win-prob {
+  color: #555;
+}
+
+.matchup-details .win-prob.bold {
+  font-weight: 700;
+  color: #333;
+}
+
+.matchup-details .points {
+  color: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .lineup-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .lineup-stats {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .matchup-players {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .matchup-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+

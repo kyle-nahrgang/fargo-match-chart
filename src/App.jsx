@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import MatchupGrid from './components/MatchupGrid';
+import OptimalLineups from './components/OptimalLineups';
 import './App.css';
 
 function App() {
@@ -65,7 +66,16 @@ function App() {
           </div>
         )}
 
-        {data && <MatchupGrid data={data} />}
+        {data && (
+          <>
+            <MatchupGrid data={data} />
+            <OptimalLineups
+              team1Players={data.team1Players}
+              team2Players={data.team2Players}
+              matchupData={data.matchupData}
+            />
+          </>
+        )}
       </div>
     </div>
   );
