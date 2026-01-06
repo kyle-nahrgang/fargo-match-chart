@@ -49,6 +49,7 @@
 .matchup-table tbody tr {
   border-bottom: 2px solid #d0d0d0;
   transition: background-color 0.2s;
+  height: 100%;
 }
 
 .matchup-table tbody tr:hover {
@@ -65,14 +66,14 @@
   vertical-align: top;
   border-right: 2px solid #d0d0d0;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   width: 100%;
   box-sizing: border-box;
 }
 
 .matchup-table td:first-child {
   padding: 0;
-  vertical-align: top;
+  height: 100%;
 }
 
 .matchup-table td:last-child {
@@ -81,16 +82,16 @@
 
 .row-header-cell {
   text-align: right;
-  padding: 8px 15px 4px 15px;
+  padding: 12px 15px;
   background: #f8f9fa;
   font-weight: 600;
   min-width: 150px;
   max-width: 200px;
   width: 100%;
-  min-height: 100%;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   box-sizing: border-box;
 }
 
@@ -213,7 +214,8 @@
 .matchup-cell {
   position: relative;
   width: 100%;
-  min-height: 80px;
+  height: 100%;
+  min-height: 100px;
   max-height: 140px;
   min-width: 120px;
   max-width: 180px;
