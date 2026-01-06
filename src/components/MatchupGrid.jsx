@@ -226,28 +226,78 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
       return true;
     }
 
+    // If the player is the highlighted row or column, don't disable them
+    if (isTeam1 && highlightedRow !== null && highlightedRow !== undefined && highlightedRow === playerIndex) {
+      return false;
+    }
+    if (!isTeam1 && highlightedColumn !== null && highlightedColumn !== undefined && highlightedColumn === playerIndex) {
+      return false;
+    }
+
     // Calculate current points used by selected matches
-    const teamPoints = selectedMatches.reduce((sum, m) => {
+    var teamPoints = selectedMatches.reduce((sum, m) => {
       return sum + (isTeam1
         ? (team1Players[m.team1Index]?.rating || 0)
         : (team2Players[m.team2Index]?.rating || 0));
     }, 0);
 
+    // include calculation for the selected row or column
+    // Track which highlighted player's rating was added so we can exclude their matches from feasibility check
+    let highlightedPlayerIndex = null;
+    if (isTeam1 && highlightedRow !== null && highlightedRow !== undefined) {
+      teamPoints += (team1Players[highlightedRow]?.rating || 0);
+      highlightedPlayerIndex = highlightedRow;
+    } else if (!isTeam1 && highlightedColumn !== null && highlightedColumn !== undefined) {
+      teamPoints += (team2Players[highlightedColumn]?.rating || 0);
+      highlightedPlayerIndex = highlightedColumn;
+    }
+
     // Check if adding this player would exceed the 1900 limit
-    const newTeamPoints = teamPoints + player.rating;
-    if (newTeamPoints > maxPoints) {
+    teamPoints = teamPoints + player.rating;
+    if (teamPoints > maxPoints) {
       return true;
     }
 
     // Check if selecting this player would make it impossible to complete a valid lineup
     const newSelectedIndices = new Set([...selectedIndices, playerIndex]);
-    const newRemainingMatches = numMatches - selectedMatches.length - 1;
-    const newRemainingPoints = maxPoints - newTeamPoints;
+
+    // Filter out matches involving the highlighted player if their rating was added to teamPoints
+    const matchesForFeasibilityCheck = highlightedPlayerIndex !== null
+      ? selectedMatches.filter(m => {
+          if (isTeam1) {
+            return m.team1Index !== highlightedPlayerIndex;
+          } else {
+            return m.team2Index !== highlightedPlayerIndex;
+          }
+        })
+      : selectedMatches;
+
+    // If highlighted player's rating was added, also add them to selected indices for feasibility check
+    // and account for them in remaining matches calculation
+    let additionalMatchesToAccountFor = 0;
+    if (highlightedPlayerIndex !== null && highlightedPlayerIndex !== playerIndex) {
+      newSelectedIndices.add(highlightedPlayerIndex);
+      // Check if highlighted player is already in selectedMatches
+      const highlightedPlayerInMatches = selectedMatches.some(m => {
+        if (isTeam1) {
+          return m.team1Index === highlightedPlayerIndex;
+        } else {
+          return m.team2Index === highlightedPlayerIndex;
+        }
+      });
+      // If not already in matches, account for them as an additional selected player
+      if (!highlightedPlayerInMatches) {
+        additionalMatchesToAccountFor = 1;
+      }
+    }
+
+    const newRemainingMatches = numMatches - matchesForFeasibilityCheck.length - 1 - additionalMatchesToAccountFor;
+    const newRemainingPoints = maxPoints - teamPoints;
 
     // For feasibility check, we need to check both teams
     if (isTeam1) {
-      const selectedTeam2IndicesForCheck = new Set(selectedMatches.map(m => m.team2Index));
-      const remainingTeam2Points = maxPoints - selectedMatches.reduce((sum, m) => {
+      const selectedTeam2IndicesForCheck = new Set(matchesForFeasibilityCheck.map(m => m.team2Index));
+      const remainingTeam2Points = maxPoints - matchesForFeasibilityCheck.reduce((sum, m) => {
         return sum + (team2Players[m.team2Index]?.rating || 0);
       }, 0);
 
@@ -259,8 +309,8 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
         remainingTeam2Points
       );
     } else {
-      const selectedTeam1IndicesForCheck = new Set(selectedMatches.map(m => m.team1Index));
-      const remainingTeam1Points = maxPoints - selectedMatches.reduce((sum, m) => {
+      const selectedTeam1IndicesForCheck = new Set(matchesForFeasibilityCheck.map(m => m.team1Index));
+      const remainingTeam1Points = maxPoints - matchesForFeasibilityCheck.reduce((sum, m) => {
         return sum + (team1Players[m.team1Index]?.rating || 0);
       }, 0);
 
