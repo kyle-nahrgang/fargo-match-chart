@@ -15,6 +15,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const [selectedMatches, setSelectedMatches] = useState([]);
 
   // Fetch divisions and extract divisionId and matchId from URL parameters, or use defaults
   useEffect(() => {
@@ -114,6 +115,7 @@ function App() {
     setData(null);
     setMatchId('');
     setMatches([]);
+    setSelectedMatches([]);
 
     await fetchDivisionSchedule(selectedDivisionId);
   };
@@ -124,6 +126,7 @@ function App() {
     }
 
     setMatchId(selectedMatchId);
+    setSelectedMatches([]); // Clear selected matches when switching matches
 
     // Update URL with matchId parameter
     const params = new URLSearchParams(window.location.search);
@@ -267,13 +270,18 @@ function App() {
 
         {data && (
           <>
-            <MatchupGrid data={data} />
+            <MatchupGrid
+              data={data}
+              selectedMatches={selectedMatches}
+              onMatchSelect={setSelectedMatches}
+            />
             <OptimalLineups
               team1Name={data.team1Name}
               team2Name={data.team2Name}
               team1Players={data.team1Players}
               team2Players={data.team2Players}
               matchupData={data.matchupData}
+              selectedMatches={selectedMatches}
             />
           </>
         )}

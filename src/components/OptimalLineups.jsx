@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import './OptimalLineups.css';
 
-function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Players, team2Players, matchupData, maxPoints = 1900, numMatches = 4 }) {
+function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Players, team2Players, matchupData, maxPoints = 1900, numMatches = 4, selectedMatches = [] }) {
   // Generate combinations of k items from array
   const combinations = (arr, k) => {
     if (k === 0) return [[]];
@@ -82,33 +82,137 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
       return { team1Lineups: [], team2Lineups: [] };
     }
 
+    // Calculate selected players and remaining constraints
+    const selectedTeam1Indices = new Set(selectedMatches.map(m => m.team1Index));
+    const selectedTeam2Indices = new Set(selectedMatches.map(m => m.team2Index));
+
+    const selectedTeam1Points = selectedMatches.reduce((sum, m) => {
+      return sum + (team1Players[m.team1Index]?.rating || 0);
+    }, 0);
+
+    const selectedTeam2Points = selectedMatches.reduce((sum, m) => {
+      return sum + (team2Players[m.team2Index]?.rating || 0);
+    }, 0);
+
+    const remainingMatches = numMatches - selectedMatches.length;
+    const remainingTeam1Points = maxPoints - selectedTeam1Points;
+    const remainingTeam2Points = maxPoints - selectedTeam2Points;
+
     // Check if we have enough players
-    if (team1Players.length < numMatches || team2Players.length < numMatches) {
-      console.log(`Not enough players: ${team1Name} has ${team1Players.length}, ${team2Name} has ${team2Players.length}, need ${numMatches} each`);
+    const availableTeam1Players = team1Players.filter((_, i) => !selectedTeam1Indices.has(i));
+    const availableTeam2Players = team2Players.filter((_, i) => !selectedTeam2Indices.has(i));
+
+    if (availableTeam1Players.length < remainingMatches || availableTeam2Players.length < remainingMatches) {
+      console.log(`Not enough players: ${team1Name} has ${availableTeam1Players.length} available, ${team2Name} has ${availableTeam2Players.length} available, need ${remainingMatches} each`);
       return { team1Lineups: [], team2Lineups: [] };
     }
 
-    // Create arrays with indices for easier combination generation
-    const team1WithIndices = team1Players.map((p, i) => ({ ...p, index: i }));
-    const team2WithIndices = team2Players.map((p, i) => ({ ...p, index: i }));
+    // If all matches are selected, return lineups with just selected matches
+    if (remainingMatches === 0) {
+      const selectedTeam1Players = Array.from(selectedTeam1Indices).map(i => team1Players[i]);
+      const selectedTeam2Players = Array.from(selectedTeam2Indices).map(i => team2Players[i]);
 
-    // Generate all combinations of 4 players from each team
-    const team1Combinations = combinations(team1WithIndices, numMatches);
-    const team2Combinations = combinations(team2WithIndices, numMatches);
+      // Calculate win probability for selected matches
+      let team1WinProb = 0;
+      let team2WinProb = 0;
+      const team1Matchups = [];
+      const team2Matchups = [];
 
-    // Filter combinations to only those that meet the point constraint per team
+      selectedMatches.forEach((match, idx) => {
+        const matchup = matchupData[match.team1Index]?.[match.team2Index];
+        if (matchup) {
+          const prob = extractProbability(matchup.odds);
+          if (prob !== null) {
+            team1WinProb += prob;
+            team2WinProb += (1 - prob);
+            team1Matchups.push({
+              playerIndex: match.team1Index,
+              player: team1Players[match.team1Index],
+              opponent: team2Players[match.team2Index],
+              winProb: prob,
+              race: matchup.race
+            });
+            team2Matchups.push({
+              playerIndex: match.team2Index,
+              player: team2Players[match.team2Index],
+              opponent: team1Players[match.team1Index],
+              winProb: 1 - prob,
+              race: matchup.race
+            });
+          }
+        }
+      });
+
+      return {
+        team1Lineups: [{
+          players: selectedTeam1Players,
+          totalPoints: selectedTeam1Points,
+          bestWinProb: team1WinProb,
+          avgWinProb: team1WinProb / numMatches,
+          matchups: team1Matchups
+        }],
+        team2Lineups: [{
+          players: selectedTeam2Players,
+          totalPoints: selectedTeam2Points,
+          bestWinProb: team2WinProb,
+          avgWinProb: team2WinProb / numMatches,
+          matchups: team2Matchups
+        }]
+      };
+    }
+
+    // Create arrays with indices for easier combination generation (excluding selected players)
+    const team1WithIndices = team1Players
+      .map((p, i) => ({ ...p, index: i }))
+      .filter(p => !selectedTeam1Indices.has(p.index));
+    const team2WithIndices = team2Players
+      .map((p, i) => ({ ...p, index: i }))
+      .filter(p => !selectedTeam2Indices.has(p.index));
+
+    // Generate all combinations of remaining players
+    const team1Combinations = combinations(team1WithIndices, remainingMatches);
+    const team2Combinations = combinations(team2WithIndices, remainingMatches);
+
+    // Filter combinations to only those that meet the remaining point constraint per team
     const validTeam1Combinations = team1Combinations.filter(combo => {
       const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
-      return totalPoints <= maxPoints;
+      return totalPoints <= remainingTeam1Points;
     });
 
     const validTeam2Combinations = team2Combinations.filter(combo => {
       const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
-      return totalPoints <= maxPoints;
+      return totalPoints <= remainingTeam2Points;
     });
+
+    // Calculate win probability for selected matches
+    const getSelectedMatchupsWinProb = (isTeam1) => {
+      let totalWinProb = 0;
+      const matchups = [];
+
+      selectedMatches.forEach(match => {
+        const matchup = matchupData[match.team1Index]?.[match.team2Index];
+        if (matchup) {
+          const prob = extractProbability(matchup.odds);
+          if (prob !== null) {
+            const winProb = isTeam1 ? prob : (1 - prob);
+            totalWinProb += winProb;
+            matchups.push({
+              playerIndex: isTeam1 ? match.team1Index : match.team2Index,
+              player: isTeam1 ? team1Players[match.team1Index] : team2Players[match.team2Index],
+              opponent: isTeam1 ? team2Players[match.team2Index] : team1Players[match.team1Index],
+              winProb: winProb,
+              race: matchup.race
+            });
+          }
+        }
+      });
+
+      return { winProb: totalWinProb, matchups };
+    };
 
     // Calculate best matchup win probability for each team's lineup
     const calculateBestMatchupWinProb = (teamSelection, isTeam1) => {
+      const selectedWinProb = getSelectedMatchupsWinProb(isTeam1);
       let bestTotalWinProb = -1;
       let bestMatchups = null;
 
@@ -122,7 +226,7 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
 
         for (const team2Perm of team2Perms) {
           const matchups = [];
-          let totalWinProb = 0;
+          let totalWinProb = selectedWinProb.winProb;
           let valid = true;
 
           for (let i = 0; i < teamSelection.length; i++) {
@@ -161,7 +265,7 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
 
           if (valid && totalWinProb > bestPermWinProb) {
             bestPermWinProb = totalWinProb;
-            bestPermMatchups = matchups;
+            bestPermMatchups = [...selectedWinProb.matchups, ...matchups];
           }
         }
 
@@ -176,11 +280,17 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
 
     // Generate Team 1 lineups
     const team1Lineups = validTeam1Combinations.map(combo => {
-      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      const comboPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      const totalPoints = selectedTeam1Points + comboPoints;
       const result = calculateBestMatchupWinProb(combo, true);
 
+      // Combine selected players with combo players
+      const selectedPlayers = Array.from(selectedTeam1Indices).map(i => team1Players[i]);
+      const comboPlayers = combo.map(p => team1Players[p.index]);
+      const allPlayers = [...selectedPlayers, ...comboPlayers];
+
       return {
-        players: combo.map(p => team1Players[p.index]),
+        players: allPlayers,
         totalPoints,
         bestWinProb: result ? result.winProb : 0,
         avgWinProb: result ? result.winProb / numMatches : 0,
@@ -192,11 +302,17 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
 
     // Generate team 2 lineups
     const team2Lineups = validTeam2Combinations.map(combo => {
-      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      const comboPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      const totalPoints = selectedTeam2Points + comboPoints;
       const result = calculateBestMatchupWinProb(combo, false);
 
+      // Combine selected players with combo players
+      const selectedPlayers = Array.from(selectedTeam2Indices).map(i => team2Players[i]);
+      const comboPlayers = combo.map(p => team2Players[p.index]);
+      const allPlayers = [...selectedPlayers, ...comboPlayers];
+
       return {
-        players: combo.map(p => team2Players[p.index]),
+        players: allPlayers,
         totalPoints,
         bestWinProb: result ? result.winProb : 0,
         avgWinProb: result ? result.winProb / numMatches : 0,
@@ -207,7 +323,7 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
       .slice(0, 10);
 
     return { team1Lineups, team2Lineups };
-  }, [team1Players, team2Players, matchupData, maxPoints, numMatches]);
+  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches]);
 
   if (!team1Players || !team2Players || !matchupData) {
     return (

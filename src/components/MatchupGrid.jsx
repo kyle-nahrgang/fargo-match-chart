@@ -9,8 +9,10 @@ import './MatchupGrid.css';
 
 const columnHelper = createColumnHelper();
 
-function MatchupGrid({ data }) {
+function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
   const { team1Name, team2Name, team1Players, team2Players, matchupData } = data;
+  const maxPoints = 1900;
+  const numMatches = 4;
 
   // Extract probability value from odds object
   const extractProbability = (odds) => {
@@ -86,6 +88,203 @@ function MatchupGrid({ data }) {
     return matchTable + " " + heat
   }
 
+  // Check if a match is selected
+  const isMatchSelected = (team1Index, team2Index) => {
+    return selectedMatches.some(m => m.team1Index === team1Index && m.team2Index === team2Index);
+  };
+
+  // Generate combinations helper (same as OptimalLineups)
+  const combinations = (arr, k) => {
+    if (k === 0) return [[]];
+    if (k > arr.length) return [];
+
+    const results = [];
+    const generate = (combo, start) => {
+      if (combo.length === k) {
+        results.push([...combo]);
+        return;
+      }
+      for (let i = start; i < arr.length; i++) {
+        combo.push(arr[i]);
+        generate(combo, i + 1);
+        combo.pop();
+      }
+    };
+    generate([], 0);
+    return results;
+  };
+
+  // Check if there's a feasible solution with given constraints
+  const hasFeasibleSolution = (usedTeam1Indices, usedTeam2Indices, remainingMatches, remainingTeam1Points, remainingTeam2Points) => {
+    if (remainingMatches === 0) {
+      return remainingTeam1Points >= 0 && remainingTeam2Points >= 0;
+    }
+
+    // Get available players
+    const availableTeam1Players = team1Players
+      .map((p, i) => ({ ...p, index: i }))
+      .filter(p => !usedTeam1Indices.has(p.index));
+
+    const availableTeam2Players = team2Players
+      .map((p, i) => ({ ...p, index: i }))
+      .filter(p => !usedTeam2Indices.has(p.index));
+
+    if (availableTeam1Players.length < remainingMatches || availableTeam2Players.length < remainingMatches) {
+      return false;
+    }
+
+    // Generate combinations for team1
+    const team1Combos = combinations(availableTeam1Players, remainingMatches);
+
+    // Filter to valid point combinations for team1
+    const validTeam1Combos = team1Combos.filter(combo => {
+      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      return totalPoints <= remainingTeam1Points;
+    });
+
+    if (validTeam1Combos.length === 0) {
+      return false;
+    }
+
+    // Generate combinations for team2
+    const team2Combos = combinations(availableTeam2Players, remainingMatches);
+
+    // Filter to valid point combinations for team2
+    const validTeam2Combos = team2Combos.filter(combo => {
+      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
+      return totalPoints <= remainingTeam2Points;
+    });
+
+    if (validTeam2Combos.length === 0) {
+      return false;
+    }
+
+    // Generate permutations helper
+    const permutations = (arr) => {
+      if (arr.length <= 1) return [arr];
+      const results = [];
+      for (let i = 0; i < arr.length; i++) {
+        const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+        const perms = permutations(rest);
+        for (const perm of perms) {
+          results.push([arr[i], ...perm]);
+        }
+      }
+      return results;
+    };
+
+    // Check if there's at least one valid pairing between team1 and team2 combinations
+    // where all matchups exist and are valid
+    for (const team1Combo of validTeam1Combos) {
+      for (const team2Combo of validTeam2Combos) {
+        // Try all permutations of team2 to find valid matchups
+        const team2Perms = permutations(team2Combo);
+
+        for (const team2Perm of team2Perms) {
+          // Check if we can form valid matchups between these combinations
+          let allMatchupsValid = true;
+          for (let i = 0; i < team1Combo.length; i++) {
+            const p1Idx = team1Combo[i].index;
+            const p2Idx = team2Perm[i].index;
+            const matchup = matchupData[p1Idx]?.[p2Idx];
+
+            if (!matchup || !matchup.race) {
+              allMatchupsValid = false;
+              break;
+            }
+          }
+
+          if (allMatchupsValid) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // Check if a match can be selected (wouldn't exceed point limit)
+  const isMatchDisabled = (team1Index, team2Index) => {
+    const player1 = team1Players[team1Index];
+    const player2 = team2Players[team2Index];
+
+    if (!player1 || !player2) return true;
+
+    // Calculate current points used by selected matches
+    const selectedTeam1Indices = new Set(selectedMatches.map(m => m.team1Index));
+    const selectedTeam2Indices = new Set(selectedMatches.map(m => m.team2Index));
+
+    // If this exact match is already selected, allow deselecting
+    if (isMatchSelected(team1Index, team2Index)) {
+      return false;
+    }
+
+    // If either player is already selected in another match, disable this match
+    if (selectedTeam1Indices.has(team1Index) || selectedTeam2Indices.has(team2Index)) {
+      return true;
+    }
+
+    // Check if we've already selected max matches
+    if (selectedMatches.length >= numMatches) {
+      return true;
+    }
+
+    // Calculate points if we add this match
+    const team1Points = selectedMatches.reduce((sum, m) => {
+      return sum + (team1Players[m.team1Index]?.rating || 0);
+    }, 0);
+
+    const team2Points = selectedMatches.reduce((sum, m) => {
+      return sum + (team2Players[m.team2Index]?.rating || 0);
+    }, 0);
+
+    // Check if adding this match would exceed limits
+    const newTeam1Points = team1Points + player1.rating;
+    const newTeam2Points = team2Points + player2.rating;
+
+    if (newTeam1Points > maxPoints || newTeam2Points > maxPoints) {
+      return true;
+    }
+
+    // Check if selecting this match would make it impossible to complete a valid lineup
+    const newSelectedTeam1Indices = new Set([...selectedTeam1Indices, team1Index]);
+    const newSelectedTeam2Indices = new Set([...selectedTeam2Indices, team2Index]);
+    const newRemainingMatches = numMatches - selectedMatches.length - 1;
+    const newRemainingTeam1Points = maxPoints - newTeam1Points;
+    const newRemainingTeam2Points = maxPoints - newTeam2Points;
+
+    // Check feasibility
+    return !hasFeasibleSolution(
+      newSelectedTeam1Indices,
+      newSelectedTeam2Indices,
+      newRemainingMatches,
+      newRemainingTeam1Points,
+      newRemainingTeam2Points
+    );
+  };
+
+  // Handle match cell click
+  const handleMatchClick = (team1Index, team2Index) => {
+    if (!onMatchSelect) return;
+
+    if (isMatchDisabled(team1Index, team2Index) && !isMatchSelected(team1Index, team2Index)) {
+      return; // Don't allow clicking disabled matches
+    }
+
+    const isSelected = isMatchSelected(team1Index, team2Index);
+
+    if (isSelected) {
+      // Deselect
+      onMatchSelect(selectedMatches.filter(m =>
+        !(m.team1Index === team1Index && m.team2Index === team2Index)
+      ));
+    } else {
+      // Select
+      onMatchSelect([...selectedMatches, { team1Index, team2Index }]);
+    }
+  };
+
   // Create columns dynamically
   const columns = useMemo(() => {
     const cols = [
@@ -139,8 +338,15 @@ function MatchupGrid({ data }) {
             // Parse race: "p1RaceTo-p2RaceTo" from Team 1's perspective
             const [p1RaceTo, p2RaceTo] = matchup.race.split('-');
 
+            const isSelected = isMatchSelected(rowIndex, index);
+            const isDisabled = isMatchDisabled(rowIndex, index);
+
             return (
-              <div className="matchup-cell split-cell">
+              <div
+                className={`matchup-cell split-cell ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                onClick={() => handleMatchClick(rowIndex, index)}
+                style={{ cursor: isDisabled && !isSelected ? 'not-allowed' : 'pointer' }}
+              >
                 <div className="match-info-bar">
                   {formatMatchType(matchup.length, matchup.type)}
                 </div>
@@ -162,7 +368,7 @@ function MatchupGrid({ data }) {
     });
 
     return cols;
-  }, [team1Players, team2Players, matchupData]);
+  }, [team1Players, team2Players, matchupData, selectedMatches]);
 
   // Create table data
   const tableData = useMemo(() => {
