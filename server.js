@@ -14,6 +14,7 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const LEAGUE_ID = '570cec8b-dc44-4bfa-a103-b317012291b1';
 
 app.use(cors());
 app.use(express.json());
@@ -92,6 +93,88 @@ function getPlayerRating(player) {
         throw new Error(`Could not find rating for player: ${JSON.stringify(player)}`);
     }
 }
+
+// API endpoint to get divisions
+app.get('/api/divisions', async (req, res) => {
+    try {
+        const url = `https://lms.fargorate.com/api/leagues/${LEAGUE_ID}/divisions`;
+        const response = await axios.get(url);
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error fetching divisions:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API endpoint to get division schedule
+app.post('/api/division-schedule', async (req, res) => {
+    try {
+        const { divisionId } = req.body;
+        if (!divisionId) {
+            return res.status(400).json({ error: 'divisionId is required' });
+        }
+
+        const url = 'https://lms.fargorate.com/PublicReport/GenerateDivisionScheduleReport';
+        const response = await axios.post(url,
+            new URLSearchParams({ divisionId }),
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+
+        // Parse HTML to extract matches using regex
+        const html = response.data;
+        const matches = [];
+
+        // Match pattern: <div class="schedule-date">DATE</div> followed by match blocks
+        const datePattern = /<div class="schedule-date">([^<]+)<\/div>/g;
+        const matchBlockPattern = /<div class="schedule-team-block" data-url="([^"]+)">[\s\S]*?<span class="schedule-team">([^<]*)<\/span>[\s\S]*?<span class="schedule-team">([^<]*)<\/span>[\s\S]*?<span class="schedule-location">([^<]*)<\/span>/g;
+
+        // Extract dates and their positions
+        const dates = [];
+        let dateMatch;
+        while ((dateMatch = datePattern.exec(html)) !== null) {
+            dates.push({
+                date: dateMatch[1].trim(),
+                index: dateMatch.index
+            });
+        }
+
+        // Extract matches
+        let matchMatch;
+        while ((matchMatch = matchBlockPattern.exec(html)) !== null) {
+            const url = matchMatch[1];
+            const matchIdMatch = url.match(/matchId=([^&]+)/);
+            if (!matchIdMatch) continue;
+
+            const matchId = matchIdMatch[1];
+            const team1 = matchMatch[2].trim();
+            const team2 = matchMatch[3].trim();
+            const location = matchMatch[4].trim();
+
+            // Find the most recent date before this match
+            const matchIndex = matchMatch.index;
+            let currentDate = null;
+            for (let i = dates.length - 1; i >= 0; i--) {
+                if (dates[i].index < matchIndex) {
+                    currentDate = dates[i].date;
+                    break;
+                }
+            }
+
+            matches.push({
+                matchId,
+                team1,
+                team2,
+                location,
+                date: currentDate
+            });
+        }
+
+        res.json(matches);
+    } catch (error) {
+        console.error('Error fetching division schedule:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // API endpoint to get matchup data
 app.get('/api/matchups/:matchId', async (req, res) => {

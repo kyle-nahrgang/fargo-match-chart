@@ -6,6 +6,36 @@
 import axios from 'axios';
 
 const API_BASE_URL = 'https://lms.fargorate.com/api';
+const LEAGUE_ID = '570cec8b-dc44-4bfa-a103-b317012291b1';
+
+// https://lms.fargorate.com/api/leagues/570cec8b-dc44-4bfa-a103-b317012291b1/divisions
+
+/**
+ * Get list of divisions for the league.
+ */
+export async function getDivisions() {
+  try {
+    const url = `${API_BASE_URL}/leagues/${LEAGUE_ID}/divisions`;
+    const response = await axios.get(url);
+    // Check if response is actually JSON (not HTML error page)
+    if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
+      throw new Error('Received HTML instead of JSON. The API may be unavailable.');
+    }
+    console.log(response)
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      // Server responded with error status
+      throw new Error(`Failed to fetch divisions: ${error.response.status} ${error.response.statusText}`);
+    } else if (error.request) {
+      // Request made but no response
+      throw new Error('Failed to fetch divisions: No response from server');
+    } else {
+      // Something else happened
+      throw new Error(`Failed to fetch divisions: ${error.message}`);
+    }
+  }
+}
 
 /**
  * Get match information including teams.
@@ -79,6 +109,79 @@ export function getPlayerRating(player) {
     return parseInt(player.fargo);
   } else {
     throw new Error(`Could not find rating for player: ${JSON.stringify(player)}`);
+  }
+}
+
+/**
+ * Get division schedule HTML and parse matches from it
+ */
+export async function getDivisionSchedule(divisionId) {
+  try {
+    const url = 'https://lms.fargorate.com/PublicReport/GenerateDivisionScheduleReport';
+    const response = await axios.post(url,
+      new URLSearchParams({ divisionId }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    // Parse HTML to extract matches
+    const html = response.data;
+
+    // Check if we got an error page instead of schedule HTML
+    if (typeof html === 'string' && (html.includes('<!DOCTYPE') && html.includes('error'))) {
+      throw new Error('Failed to fetch division schedule: Server returned an error page');
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const matchBlocks = doc.querySelectorAll('.schedule-team-block[data-url]');
+
+  const matches = [];
+  let currentDate = null;
+
+  matchBlocks.forEach((block) => {
+    const url = block.getAttribute('data-url');
+    const matchIdMatch = url.match(/matchId=([^&]+)/);
+    if (!matchIdMatch) return;
+
+    const matchId = matchIdMatch[1];
+    const teamElements = block.querySelectorAll('.schedule-team');
+    const locationElement = block.querySelector('.schedule-location');
+
+    // Check if there's a date header before this match (traverse backwards past hr tags)
+    let prevElement = block.previousElementSibling;
+    while (prevElement) {
+      if (prevElement.classList && prevElement.classList.contains('schedule-date')) {
+        currentDate = prevElement.textContent.trim();
+        break;
+      }
+      prevElement = prevElement.previousElementSibling;
+    }
+
+    const team1 = teamElements[0]?.textContent.trim() || '';
+    const team2 = teamElements[1]?.textContent.trim() || '';
+    const location = locationElement?.textContent.trim() || '';
+
+    matches.push({
+      matchId,
+      team1,
+      team2,
+      location,
+      date: currentDate
+    });
+  });
+
+    return matches;
+  } catch (error) {
+    if (error.response) {
+      // Server responded with error status
+      throw new Error(`Failed to fetch division schedule: ${error.response.status} ${error.response.statusText}`);
+    } else if (error.request) {
+      // Request made but no response
+      throw new Error('Failed to fetch division schedule: No response from server');
+    } else {
+      // Something else happened (including our custom error)
+      throw error;
+    }
   }
 }
 

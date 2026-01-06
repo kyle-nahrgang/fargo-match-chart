@@ -3,21 +3,104 @@ import MatchupGrid from './components/MatchupGrid';
 import OptimalLineups from './components/OptimalLineups';
 import './App.css';
 
+const DEFAULT_DIVISION_ID = 'c3012308-61dc-4ca5-b304-b3a00150a4f9';
+
 function App() {
+  const [divisions, setDivisions] = useState([]);
+  const [loadingDivisions, setLoadingDivisions] = useState(false);
+  const [divisionId, setDivisionId] = useState(DEFAULT_DIVISION_ID);
   const [matchId, setMatchId] = useState('');
+  const [matches, setMatches] = useState([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
 
-  // Extract matchId from URL parameters
+  // Fetch divisions and extract divisionId and matchId from URL parameters, or use defaults
   useEffect(() => {
+    fetchDivisions();
+
     const params = new URLSearchParams(window.location.search);
+    const urlDivisionId = params.get('divisionId');
     const urlMatchId = params.get('matchId');
+
+    // Use URL divisionId if present, otherwise use default
+    const finalDivisionId = urlDivisionId || DEFAULT_DIVISION_ID;
+    setDivisionId(finalDivisionId);
+
+    // Always fetch division schedule on mount
+    fetchDivisionSchedule(finalDivisionId);
+
     if (urlMatchId) {
       setMatchId(urlMatchId);
       fetchMatchData(urlMatchId);
     }
   }, []);
+
+  const fetchDivisions = async () => {
+    setLoadingDivisions(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/divisions');
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Failed to fetch divisions';
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            // If JSON parsing fails, use default message
+          }
+        }
+        throw new Error(errorMessage);
+      }
+      const result = await response.json();
+      setDivisions(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingDivisions(false);
+    }
+  };
+
+  const fetchDivisionSchedule = async (divId) => {
+    if (!divId || !divId.trim()) {
+      return;
+    }
+
+    setLoadingMatches(true);
+    setError(null);
+    setMatches([]);
+
+    try {
+      const response = await fetch('/api/division-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ divisionId: divId.trim() })
+      });
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Failed to fetch division schedule';
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            // If JSON parsing fails, use default message
+          }
+        }
+        throw new Error(errorMessage);
+      }
+      const result = await response.json();
+      setMatches(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingMatches(false);
+    }
+  };
 
   const fetchMatchData = async (id) => {
     if (!id || !id.trim()) {
@@ -29,24 +112,22 @@ function App() {
     setData(null);
 
     try {
-      // Check if we're in development (has backend server) or production (direct API calls)
-      const useBackend = import.meta.env.DEV || window.location.hostname === 'localhost';
-
-      if (useBackend) {
-        // Use backend server in development
-        const response = await fetch(`/api/matchups/${id.trim()}`);
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch matchup data');
+      const response = await fetch(`/api/matchups/${id.trim()}`);
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Failed to fetch matchup data';
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            // If JSON parsing fails, use default message
+          }
         }
-        const result = await response.json();
-        setData(result);
-      } else {
-        // Call API directly in production (GitHub Pages)
-        const { getMatchupData } = await import('./api');
-        const result = await getMatchupData(id.trim());
-        setData(result);
+        throw new Error(errorMessage);
       }
+      const result = await response.json();
+      setData(result);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -54,19 +135,40 @@ function App() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!matchId.trim()) {
-      setError('Please enter a match ID');
+  const handleDivisionChange = async (selectedDivisionId) => {
+    if (!selectedDivisionId) {
       return;
     }
 
-    // Update URL with matchId parameter
+    setDivisionId(selectedDivisionId);
+
+    // Update URL with divisionId parameter
     const params = new URLSearchParams(window.location.search);
-    params.set('matchId', matchId.trim());
+    params.set('divisionId', selectedDivisionId);
+    params.delete('matchId'); // Clear matchId when changing division
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
 
-    await fetchMatchData(matchId.trim());
+    // Clear current match data and matches
+    setData(null);
+    setMatchId('');
+    setMatches([]);
+
+    await fetchDivisionSchedule(selectedDivisionId);
+  };
+
+  const handleMatchSelect = async (selectedMatchId) => {
+    if (!selectedMatchId) {
+      return;
+    }
+
+    setMatchId(selectedMatchId);
+
+    // Update URL with matchId parameter
+    const params = new URLSearchParams(window.location.search);
+    params.set('matchId', selectedMatchId);
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+
+    await fetchMatchData(selectedMatchId);
   };
 
   return (
@@ -78,22 +180,92 @@ function App() {
         </header>
 
         {(!data && !loading) && (
-          <form onSubmit={handleSubmit} className="match-form">
-            <div className="input-group">
-              <label htmlFor="matchId">Match ID:</label>
-              <input
-                id="matchId"
-                type="text"
-                value={matchId}
-                onChange={(e) => setMatchId(e.target.value)}
-                placeholder="Enter match ID..."
-                disabled={loading}
-              />
-              <button type="submit" disabled={loading}>
-                {loading ? 'Loading...' : 'Analyze Matchups'}
-              </button>
+          <div className="match-form">
+            <div className="input-group" style={{ marginBottom: '20px' }}>
+              <label htmlFor="divisionSelect">Division:</label>
+              {loadingDivisions ? (
+                <div style={{ flex: 1, padding: '12px 16px' }}>Loading divisions...</div>
+              ) : (
+                <select
+                  id="divisionSelect"
+                  value={divisionId}
+                  onChange={(e) => handleDivisionChange(e.target.value)}
+                  disabled={loadingMatches || loadingDivisions}
+                >
+                  {divisions.map((division) => (
+                    <option key={division.id} value={division.id}>
+                      {division.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
-          </form>
+
+            {loadingMatches && (
+              <div className="loading-spinner-container" style={{ minHeight: '100px', padding: '20px' }}>
+                <div className="spinner"></div>
+                <p>Loading matches...</p>
+              </div>
+            )}
+
+            {matches.length > 0 && (
+              <div className="input-group">
+                <label htmlFor="matchSelect">Select Match:</label>
+                <select
+                  id="matchSelect"
+                  value={matchId}
+                  onChange={(e) => handleMatchSelect(e.target.value)}
+                  disabled={loading}
+                >
+                  <option value="">-- Select a match --</option>
+                  {matches.map((match) => (
+                    <option key={match.matchId} value={match.matchId}>
+                      {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
+        {data && (
+          <div className="match-form" style={{ marginBottom: '20px' }}>
+            {divisions.length > 0 && (
+              <div className="input-group" style={{ marginBottom: '15px' }}>
+                <label htmlFor="divisionSelectCurrent">Division:</label>
+                <select
+                  id="divisionSelectCurrent"
+                  value={divisionId}
+                  onChange={(e) => handleDivisionChange(e.target.value)}
+                  disabled={loadingMatches || loadingDivisions}
+                >
+                  {divisions.map((division) => (
+                    <option key={division.id} value={division.id}>
+                      {division.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {matches.length > 0 && (
+              <div className="input-group">
+                <label htmlFor="matchSelectCurrent">Switch Match:</label>
+                <select
+                  id="matchSelectCurrent"
+                  value={matchId}
+                  onChange={(e) => handleMatchSelect(e.target.value)}
+                  disabled={loading}
+                >
+                  {matches.map((match) => (
+                    <option key={match.matchId} value={match.matchId}>
+                      {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         )}
 
         {data && (
@@ -105,11 +277,14 @@ function App() {
                   setData(null);
                   setMatchId('');
                   setError(null);
-                  window.history.pushState({}, '', window.location.pathname);
+                  // Keep divisionId and matches so user can select another match
+                  const params = new URLSearchParams(window.location.search);
+                  params.delete('matchId');
+                  window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
                 }}
                 className="new-match-btn"
               >
-                Analyze New Match
+                Select Different Match
               </button>
             </div>
           </div>
