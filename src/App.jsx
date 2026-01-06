@@ -42,21 +42,8 @@ function App() {
     setError(null);
 
     try {
-      const response = await fetch('/api/divisions');
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        let errorMessage = 'Failed to fetch divisions';
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorMessage;
-          } catch (e) {
-            // If JSON parsing fails, use default message
-          }
-        }
-        throw new Error(errorMessage);
-      }
-      const result = await response.json();
+      const { getDivisions } = await import('./api');
+      const result = await getDivisions();
       setDivisions(result);
     } catch (err) {
       setError(err.message);
@@ -75,28 +62,16 @@ function App() {
     setMatches([]);
 
     try {
-      const response = await fetch('/api/division-schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ divisionId: divId.trim() })
-      });
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        let errorMessage = 'Failed to fetch division schedule';
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorMessage;
-          } catch (e) {
-            // If JSON parsing fails, use default message
-          }
-        }
-        throw new Error(errorMessage);
-      }
-      const result = await response.json();
+      const { getDivisionSchedule } = await import('./api');
+      const result = await getDivisionSchedule(divId.trim());
       setMatches(result);
     } catch (err) {
-      setError(err.message);
+      // Check if it's a CORS error
+      if (err.message.includes('CORS') || err.message.includes('Access-Control')) {
+        setError('CORS error: The division schedule API does not allow direct browser access. Please use a backend proxy or CORS proxy.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoadingMatches(false);
     }
@@ -112,21 +87,8 @@ function App() {
     setData(null);
 
     try {
-      const response = await fetch(`/api/matchups/${id.trim()}`);
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        let errorMessage = 'Failed to fetch matchup data';
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorMessage;
-          } catch (e) {
-            // If JSON parsing fails, use default message
-          }
-        }
-        throw new Error(errorMessage);
-      }
-      const result = await response.json();
+      const { getMatchupData } = await import('./api');
+      const result = await getMatchupData(id.trim());
       setData(result);
     } catch (err) {
       setError(err.message);

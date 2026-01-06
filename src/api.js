@@ -114,13 +114,23 @@ export function getPlayerRating(player) {
 
 /**
  * Get division schedule HTML and parse matches from it
+ * Uses a CORS proxy for GitHub Pages deployment since the API blocks direct browser requests
  */
 export async function getDivisionSchedule(divisionId) {
   try {
-    const url = 'https://lms.fargorate.com/PublicReport/GenerateDivisionScheduleReport';
-    const response = await axios.post(url,
+    // For GitHub Pages (static hosting), we need to use a CORS proxy
+    // Using corsproxy.io which supports POST requests
+    const targetUrl = 'https://lms.fargorate.com/PublicReport/GenerateDivisionScheduleReport';
+    const corsProxy = 'https://corsproxy.io/?';
+    const proxiedUrl = corsProxy + encodeURIComponent(targetUrl);
+
+    const response = await axios.post(proxiedUrl,
       new URLSearchParams({ divisionId }),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        // Some CORS proxies need this
+        withCredentials: false
+      }
     );
 
     // Parse HTML to extract matches
