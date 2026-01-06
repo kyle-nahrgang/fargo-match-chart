@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matchup Grid: Race and Odds</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .corner {
+            background-color: #E8E8E8;
+            width: 150px;
+        }
+
+        .row-header {
+            background-color: #E8E8E8;
+            font-weight: bold;
+            text-align: right;
+            padding-right: 15px;
+            width: 150px;
+        }
+
+        .col-header {
+            background-color: #E8E8E8;
+            height: 150px;
+            vertical-align: bottom;
+            padding: 5px;
+        }
+
+        .rotated {
+            transform: rotate(-90deg);
+            transform-origin: center;
+            white-space: nowrap;
+            display: inline-block;
+            width: 140px;
+            text-align: left;
+        }
+
+        .data-cell {
+            background-color: #FFFFFF;
+            height: 80px;
+            vertical-align: middle;
+        }
+
+        .data-cell.empty {
+            background-color: #F5F5F5;
+        }
+
+        .race {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .odds {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Matchup Grid: Race and Odds</h1>
+    <div class="container">
+        <table>
+            <tr><th class="corner"></th><th class="col-header"><div class="rotated">Katie Arroyo</div></th><th class="col-header"><div class="rotated">Derek Hoelzle</div></th><th class="col-header"><div class="rotated">Mohammed Khan</div></th><th class="col-header"><div class="rotated">Anthony Khann</div></th><th class="col-header"><div class="rotated">Matt Kohler</div></th><th class="col-header"><div class="rotated">Heather McLaughlin</div></th><th class="col-header"><div class="rotated">Adnan Mubeen</div></th><th class="col-header"><div class="rotated">Milan Patel</div></th></tr>
+            <tr><th class="row-header">Denton Burnell</th><td class="data-cell"><div class="race">4-3</div><div class="odds">0.6267723744...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.3737954571...</div></td><td class="data-cell"><div class="race">3-4</div><div class="odds">0.3570900254...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.2342512896...</div></td><td class="data-cell"><div class="race">3-4</div><div class="odds">0.3381186900...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.3416928078...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.6336873157...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.4283917334...</div></td></tr><tr><th class="row-header">Julie Clerkin</th><td class="data-cell"><div class="race">3-3</div><div class="odds">0.5064979426...</div></td><td class="data-cell"><div class="race">2-5</div><div class="odds">0.3528672503...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.2162882038...</div></td><td class="data-cell"><div class="race">2-6</div><div class="odds">0.3016834603...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.2016385006...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.3471367313...</div></td><td class="data-cell"><div class="race">3-3</div><div class="odds">0.3572608504...</div></td><td class="data-cell"><div class="race">3-4</div><div class="odds">0.3196159122...</div></td></tr><tr><th class="row-header">Matthew Clerkin</th><td class="data-cell"><div class="race">3-2</div><div class="odds">0.5395789039...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.3670521431...</div></td><td class="data-cell"><div class="race">3-4</div><div class="odds">0.3507166585...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.2290237617...</div></td><td class="data-cell"><div class="race">3-4</div><div class="odds">0.3318971084...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.3347824999...</div></td><td class="data-cell"><div class="race">3-3</div><div class="odds">0.6089574830...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.4209547430...</div></td></tr><tr><th class="row-header">Wayne Clerkin</th><td class="data-cell"><div class="race">6-2</div><div class="odds">0.7059615964...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.6720687822...</div></td><td class="data-cell"><div class="race">4-3</div><div class="odds">0.6004009312...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.5037905879...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.7430049677...</div></td><td class="data-cell"><div class="race">5-3</div><div class="odds">0.6396399214...</div></td><td class="data-cell"><div class="race">5-2</div><div class="odds">0.6526287834...</div></td><td class="data-cell"><div class="race">5-3</div><div class="odds">0.7153635533...</div></td></tr><tr><th class="row-header">Joe Hogan</th><td class="data-cell"><div class="race">5-3</div><div class="odds">0.6880278509...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.2723479811...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.3663126842...</div></td><td class="data-cell"><div class="race">3-5</div><div class="odds">0.3943142840...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.3451694400...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.5340716378...</div></td><td class="data-cell"><div class="race">4-3</div><div class="odds">0.6429099745...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.6229463197...</div></td></tr><tr><th class="row-header">Ryan Khan</th><td class="data-cell"><div class="race">5-2</div><div class="odds">0.6190089246...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.4546168836...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.5604027104...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.2913919082...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.5378458734...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.7182125406...</div></td><td class="data-cell"><div class="race">5-3</div><div class="odds">0.7033821402...</div></td><td class="data-cell"><div class="race">4-3</div><div class="odds">0.6332613878...</div></td></tr><tr><th class="row-header">Kyle Nahrgang</th><td class="data-cell"><div class="race">5-3</div><div class="odds">0.7123939142...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.2978839654...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.3951783468...</div></td><td class="data-cell"><div class="race">3-4</div><div class="odds">0.3135590035...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.3734615856...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.5641441111...</div></td><td class="data-cell"><div class="race">4-3</div><div class="odds">0.6681028915...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.6513399671...</div></td></tr><tr><th class="row-header">Steve Saylor</th><td class="data-cell"><div class="race">6-2</div><div class="odds">0.8424200324...</div></td><td class="data-cell"><div class="race">5-3</div><div class="odds">0.6159975033...</div></td><td class="data-cell"><div class="race">5-3</div><div class="odds">0.7064030773...</div></td><td class="data-cell"><div class="race">4-4</div><div class="odds">0.7369217055...</div></td><td class="data-cell"><div class="race">5-3</div><div class="odds">0.6880278509...</div></td><td class="data-cell"><div class="race">5-2</div><div class="odds">0.6161403259...</div></td><td class="data-cell"><div class="race">6-2</div><div class="odds">0.7515125897...</div></td><td class="data-cell"><div class="race">6-2</div><div class="odds">0.6067935345...</div></td></tr>
+        </table>
+    </div>
+</body>
+</html>

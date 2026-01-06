@@ -1,0 +1,30 @@
+{
+  "name": "fargo-matchups",
+  "version": "1.0.0",
+  "description": "Calculate race lengths and odds for all player matchups in a FargoRate match",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node server.js",
+    "dev:client": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js"
+  },
+  "keywords": ["fargo", "matchups", "pool", "react"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@tanstack/react-table": "^8.10.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.8",
+    "concurrently": "^8.2.2"
+  }
+}
