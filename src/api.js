@@ -101,7 +101,10 @@ export async function getMatchupData(matchId) {
 
             // Determine race length and type
             let length, typeVal;
-            if (rating1 < 400 && rating2 < 400) {
+            if (rating1 >= 500 && rating2 >= 500) {
+              length = "5";
+              typeVal = 1;
+            } else if (rating1 < 400 && rating2 < 400) {
               length = "3";
               typeVal = 2;
             } else {
