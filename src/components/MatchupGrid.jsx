@@ -12,32 +12,68 @@ const columnHelper = createColumnHelper();
 function MatchupGrid({ data }) {
   const { team1Players, team2Players, matchupData } = data;
 
-  const formatOdds = (odds) => {
+  // Extract probability value from odds object
+  const extractProbability = (odds) => {
     if (!odds || typeof odds !== 'object') {
-      return String(odds || 'N/A');
+      if (typeof odds === 'number') {
+        return odds >= 0 && odds <= 1 ? odds : odds / 100;
+      }
+      return null;
     }
 
     if (odds.error) {
-      return `Error: ${odds.error}`;
+      return null;
     }
 
+    // Try winProbability first
     if (odds.winProbability !== undefined) {
       const prob = odds.winProbability;
       if (typeof prob === 'number') {
-        return `${(prob * 100).toFixed(1)}%`;
+        return prob >= 0 && prob <= 1 ? prob : prob / 100;
       }
     }
 
+    // Try odds field
     if (odds.odds !== undefined) {
-      return String(odds.odds);
+      const oddsValue = odds.odds;
+      if (typeof oddsValue === 'number') {
+        return oddsValue >= 0 && oddsValue <= 1 ? oddsValue : oddsValue / 100;
+      }
     }
 
-    const values = Object.values(odds)
-      .filter(v => v !== null && v !== undefined)
-      .map(String)
-      .slice(0, 2);
+    // Try to find any numeric value
+    const numericValues = Object.values(odds)
+      .filter(v => v !== null && v !== undefined && typeof v === 'number')
+      .slice(0, 1);
 
-    return values.length > 0 ? values.join(', ') : 'N/A';
+    if (numericValues.length > 0) {
+      const value = numericValues[0];
+      return value >= 0 && value <= 1 ? value : value / 100;
+    }
+
+    return null;
+  };
+
+  const formatOdds = (odds, inverse = false) => {
+    const prob = extractProbability(odds);
+
+    if (prob === null) {
+      if (odds && odds.error) {
+        return <span>Error: {odds.error}</span>;
+      }
+      return <span>N/A</span>;
+    }
+
+    // If inverse is true, show the other player's probability (1 - prob)
+    const displayProb = inverse ? (1 - prob) : prob;
+    const percentage = (displayProb * 100).toFixed(1);
+    const isBold = displayProb > 0.5;
+
+    return (
+      <span className={isBold ? 'odds-bold' : ''}>
+        {percentage}%
+      </span>
+    );
   };
 
   // Create columns dynamically
@@ -55,7 +91,7 @@ function MatchupGrid({ data }) {
             </div>
           );
         },
-        size: 180,
+        size: 160,
         enableSorting: false,
       }),
     ];
@@ -75,17 +111,29 @@ function MatchupGrid({ data }) {
             const matchup = matchupData[rowIndex]?.[index];
 
             if (!matchup || !matchup.race || matchup.race === null) {
-              return <div className="matchup-cell empty">-</div>;
+              return <div className="matchup-cell empty">
+                <div className="cell-top"></div>
+                <div className="cell-bottom"></div>
+              </div>;
             }
 
+            // Parse race: "p1RaceTo-p2RaceTo" from Team 1's perspective
+            const [p1RaceTo, p2RaceTo] = matchup.race.split('-');
+
             return (
-              <div className="matchup-cell">
-                <div className="race-display">{matchup.race}</div>
-                <div className="odds-display">{formatOdds(matchup.odds)}</div>
+              <div className="matchup-cell split-cell">
+                <div className="cell-top">
+                  <div className="race-display">{p2RaceTo}</div>
+                  <div className="odds-display">{formatOdds(matchup.odds, true)}</div>
+                </div>
+                <div className="cell-bottom">
+                  <div className="race-display">{p1RaceTo}</div>
+                  <div className="odds-display">{formatOdds(matchup.odds, false)}</div>
+                </div>
               </div>
             );
           },
-          size: 150,
+          size: 140,
           enableSorting: false,
         })
       );

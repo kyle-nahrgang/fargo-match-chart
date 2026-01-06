@@ -12,7 +12,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
-  padding: 20px;
+  padding: clamp(10px, 2vw, 20px);
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 code {
@@ -22,7 +24,9 @@ code {
 
 #root {
   width: 100%;
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
