@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import './OptimalLineups.css';
 
-function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1900, numMatches = 4 }) {
+function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Players, team2Players, matchupData, maxPoints = 1900, numMatches = 4 }) {
   // Generate combinations of k items from array
   const combinations = (arr, k) => {
     if (k === 0) return [[]];
@@ -84,7 +84,7 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
 
     // Check if we have enough players
     if (team1Players.length < numMatches || team2Players.length < numMatches) {
-      console.log(`Not enough players: Team 1 has ${team1Players.length}, Team 2 has ${team2Players.length}, need ${numMatches} each`);
+      console.log(`Not enough players: ${team1Name} has ${team1Players.length}, ${team2Name} has ${team2Players.length}, need ${numMatches} each`);
       return { team1Lineups: [], team2Lineups: [] };
     }
 
@@ -190,7 +190,7 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
       .sort((a, b) => b.bestWinProb - a.bestWinProb)
       .slice(0, 10);
 
-    // Generate Team 2 lineups
+    // Generate team 2 lineups
     const team2Lineups = validTeam2Combinations.map(combo => {
       const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
       const result = calculateBestMatchupWinProb(combo, false);
@@ -230,7 +230,7 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
           <small>
             Requirements: {numMatches} matches, max {maxPoints} points per team.
             <br />
-            Team 1: {team1Players.length} players, Team 2: {team2Players.length} players.
+            {team1Name}: {team1Players.length} players, {team2Name}: {team2Players.length} players.
             <br />
             Check the browser console for debugging information.
           </small>
@@ -248,9 +248,9 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
 
       <div className="lineups-columns">
         <div className="lineup-column">
-          <h3>Team 1 Optimal Lineups</h3>
+          <h3>{team1Name}</h3>
           {team1Lineups.length === 0 ? (
-            <p className="no-lineups">No valid lineups found for Team 1</p>
+            <p className="no-lineups">No valid lineups found for {team1Name}</p>
           ) : (
             <div className="lineups-list">
               {team1Lineups.map((lineup, idx) => (
@@ -300,9 +300,9 @@ function OptimalLineups({ team1Players, team2Players, matchupData, maxPoints = 1
         </div>
 
         <div className="lineup-column">
-          <h3>Team 2 Optimal Lineups</h3>
+          <h3>{team2Name}</h3>
           {team2Lineups.length === 0 ? (
-            <p className="no-lineups">No valid lineups found for Team 2</p>
+            <p className="no-lineups">No valid lineups found for {team2Name}</p>
           ) : (
             <div className="lineups-list">
               {team2Lineups.map((lineup, idx) => (

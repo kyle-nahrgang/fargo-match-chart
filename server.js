@@ -28,6 +28,15 @@ async function getMatch(matchId) {
 }
 
 /**
+ * Get team information.
+ */
+async function getTeam(teamId) {
+    const url = `https://lms.fargorate.com/api/teams/${teamId}`;
+    const response = await axios.get(url);
+    return response.data;
+}
+
+/**
  * Get list of players for a team.
  */
 async function getTeamPlayers(teamId) {
@@ -93,7 +102,9 @@ app.get('/api/matchups/:matchId', async (req, res) => {
         const team1Id = match.teamOneId;
         const team2Id = match.teamTwoId;
 
-        const [team1Players, team2Players] = await Promise.all([
+        const [team1, team2, team1Players, team2Players] = await Promise.all([
+            getTeam(team1Id),
+            getTeam(team2Id),
             getTeamPlayers(team1Id),
             getTeamPlayers(team2Id)
         ]);
@@ -182,6 +193,8 @@ app.get('/api/matchups/:matchId', async (req, res) => {
         }
 
         res.json({
+            team1Name: team1?.name || team1?.teamName || 'Team 1',
+            team2Name: team2?.name || team2?.teamName || 'Team 2',
             team1Players: team1Players.map(p => ({
                 id: p.id,
                 name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),

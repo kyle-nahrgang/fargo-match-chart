@@ -132,6 +132,8 @@ function App() {
           <>
             <MatchupGrid data={data} />
             <OptimalLineups
+              team1Name={data.team1Name}
+              team2Name={data.team2Name}
               team1Players={data.team1Players}
               team2Players={data.team2Players}
               matchupData={data.matchupData}

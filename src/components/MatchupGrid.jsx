@@ -10,7 +10,7 @@ import './MatchupGrid.css';
 const columnHelper = createColumnHelper();
 
 function MatchupGrid({ data }) {
-  const { team1Players, team2Players, matchupData } = data;
+  const { team1Name, team2Name, team1Players, team2Players, matchupData } = data;
 
   // Extract probability value from odds object
   const extractProbability = (odds) => {
