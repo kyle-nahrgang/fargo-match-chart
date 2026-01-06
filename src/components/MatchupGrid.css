@@ -49,6 +49,7 @@
 .matchup-table tbody tr {
   border-bottom: 2px solid #d0d0d0;
   transition: background-color 0.2s;
+  height: 100%;
 }
 
 .matchup-table tbody tr:hover {
@@ -62,10 +63,17 @@
 .matchup-table td {
   padding: 0;
   text-align: center;
-  vertical-align: middle;
+  vertical-align: top;
   border-right: 2px solid #d0d0d0;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.matchup-table td:first-child {
+  padding: 0;
+  height: 100%;
 }
 
 .matchup-table td:last-child {
@@ -79,6 +87,12 @@
   font-weight: 600;
   min-width: 150px;
   max-width: 200px;
+  width: 100%;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .row-header-cell .player-name {
@@ -137,6 +151,7 @@
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
   clip-path: polygon(0 0, 100% 0, 100% 100%);
   background-color: #f0f4ff;
   display: flex;
@@ -155,6 +170,7 @@
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
   clip-path: polygon(0 0, 0 100%, 100% 100%);
   background-color: #fff5f0;
   display: flex;
@@ -221,6 +237,7 @@
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
   clip-path: polygon(0 0, 100% 0, 100% 100%);
   background-color: #f0f4ff;
   display: flex;
@@ -239,6 +256,7 @@
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
   clip-path: polygon(0 0, 0 100%, 100% 100%);
   background-color: #fff5f0;
   display: flex;
@@ -346,10 +364,22 @@
 
   .table-wrapper {
     border-radius: 4px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .matchup-table {
+    width: 100%;
   }
 
   .matchup-table th {
     padding: 0;
+  }
+
+  .matchup-table th,
+  .matchup-table td {
+    width: auto !important;
+    min-width: 0 !important;
   }
 
   .corner-cell {
@@ -372,16 +402,56 @@
     max-height: 120px;
     min-width: 90px;
     max-width: 120px;
+    width: 100%;
   }
 
   .matchup-cell .cell-top,
   .matchup-cell .cell-bottom {
     top: 18px;
+    width: 100%;
+    left: 0;
+    right: 0;
+    padding: 6px 4px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .matchup-cell .cell-top {
+    padding-right: 4px;
+    padding-left: 6px;
+  }
+
+  .matchup-cell .cell-bottom {
+    padding-left: 4px;
+    padding-right: 6px;
+  }
+
+  .corner-cell .cell-top,
+  .corner-cell .cell-bottom {
+    width: 100%;
+    left: 0;
+    right: 0;
+    padding: 6px 4px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .corner-cell .cell-top {
+    padding-right: 4px;
+    padding-left: 6px;
+  }
+
+  .corner-cell .cell-bottom {
+    padding-left: 4px;
+    padding-right: 6px;
   }
 
   .match-info-bar {
     height: 18px;
     font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+    width: 100%;
+    left: 0;
+    right: 0;
   }
 
   .col-header-cell {
@@ -401,6 +471,16 @@
     margin-top: 15px;
   }
 
+  .matchup-table {
+    width: 100%;
+  }
+
+  .matchup-table th,
+  .matchup-table td {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
   .row-header-cell {
     min-width: 80px;
     max-width: 100px;
@@ -412,16 +492,56 @@
     max-width: 100px;
     min-height: 76px;
     max-height: 96px;
+    width: 100%;
   }
 
   .matchup-cell .cell-top,
   .matchup-cell .cell-bottom {
     top: 16px;
+    width: 100%;
+    left: 0;
+    right: 0;
+    padding: 4px 3px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .matchup-cell .cell-top {
+    padding-right: 3px;
+    padding-left: 4px;
+  }
+
+  .matchup-cell .cell-bottom {
+    padding-left: 3px;
+    padding-right: 4px;
+  }
+
+  .corner-cell .cell-top,
+  .corner-cell .cell-bottom {
+    width: 100%;
+    left: 0;
+    right: 0;
+    padding: 4px 3px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .corner-cell .cell-top {
+    padding-right: 3px;
+    padding-left: 4px;
+  }
+
+  .corner-cell .cell-bottom {
+    padding-left: 3px;
+    padding-right: 4px;
   }
 
   .match-info-bar {
     height: 16px;
     font-size: clamp(0.5rem, 0.7vw, 0.6rem);
+    width: 100%;
+    left: 0;
+    right: 0;
   }
 
   .col-header-cell {
