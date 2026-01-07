@@ -12,16 +12,17 @@ function BlindPlayerSelector({
   selectedMatches = []
 }) {
 
-  // Calculate best remaining lineup after blind pick (from Team 1's perspective)
-  // Finds the best possible outcome for Team 1
-  const calculateBestRemainingLineupTeam1 = (
+  // Calculate best remaining lineup after blind pick
+  // Finds the best possible outcome for the specified team (teamNumber: 1 or 2)
+  const calculateBestRemainingLineup = (
     blindTeam1Index,
     blindTeam2Index,
     usedTeam1Indices,
     usedTeam2Indices,
     remainingMatches,
     remainingTeam1Points,
-    remainingTeam2Points
+    remainingTeam2Points,
+    teamNumber
   ) => {
     if (remainingMatches === 0) {
       return { winProb: 0, matchups: [] };
@@ -62,23 +63,27 @@ function BlindPlayerSelector({
       return null;
     }
 
-    // Find best possible outcome for Team 1: maximize win probability across all valid combinations
+    // Find best possible outcome for the specified team: maximize win probability across all valid combinations
     let bestWinProb = -1;
     let bestMatchups = null;
 
-    // Try all Team 1 combinations and find the best possible matchups
-    for (const team1Combo of validTeam1Combos) {
-      for (const team2Combo of validTeam2Combos) {
-        const team2Perms = permutations(team2Combo);
+    // Determine which team's combinations to iterate first based on perspective
+    const firstTeamCombos = teamNumber === 1 ? validTeam1Combos : validTeam2Combos;
+    const secondTeamCombos = teamNumber === 1 ? validTeam2Combos : validTeam1Combos;
 
-        for (const team2Perm of team2Perms) {
+    // Try all combinations and find the best possible matchups
+    for (const firstTeamCombo of firstTeamCombos) {
+      for (const secondTeamCombo of secondTeamCombos) {
+        const secondTeamPerms = permutations(secondTeamCombo);
+
+        for (const secondTeamPerm of secondTeamPerms) {
           const matchups = [];
           let totalWinProb = 0;
           let valid = true;
 
-          for (let i = 0; i < team1Combo.length; i++) {
-            const p1Idx = team1Combo[i].index;
-            const p2Idx = team2Perm[i].index;
+          for (let i = 0; i < firstTeamCombo.length; i++) {
+            const p1Idx = teamNumber === 1 ? firstTeamCombo[i].index : secondTeamPerm[i].index;
+            const p2Idx = teamNumber === 1 ? secondTeamPerm[i].index : firstTeamCombo[i].index;
             const matchup = matchupData[p1Idx]?.[p2Idx];
 
             if (!matchup || !matchup.race) {
@@ -92,120 +97,21 @@ function BlindPlayerSelector({
               break;
             }
 
-            totalWinProb += prob;
+            // Calculate win probability from the specified team's perspective
+            const winProb = teamNumber === 1 ? prob : (1 - prob);
+            totalWinProb += winProb;
+
+            // Build matchup object with the correct team as "player"
             matchups.push({
-              playerIndex: p1Idx,
-              player: team1Players[p1Idx],
-              opponent: team2Players[p2Idx],
-              winProb: prob,
+              playerIndex: teamNumber === 1 ? p1Idx : p2Idx,
+              player: teamNumber === 1 ? team1Players[p1Idx] : team2Players[p2Idx],
+              opponent: teamNumber === 1 ? team2Players[p2Idx] : team1Players[p1Idx],
+              winProb: winProb,
               race: matchup.race
             });
           }
 
-          // Track the best possible outcome for Team 1
-          if (valid && totalWinProb > bestWinProb) {
-            bestWinProb = totalWinProb;
-            bestMatchups = matchups;
-          }
-        }
-      }
-    }
-
-    return bestWinProb >= 0 ? { winProb: bestWinProb, matchups: bestMatchups || [] } : null;
-  };
-
-  // Calculate best remaining lineup after blind pick (from Team 2's perspective)
-  // Finds the best possible outcome for Team 2
-  const calculateBestRemainingLineupTeam2 = (
-    blindTeam1Index,
-    blindTeam2Index,
-    usedTeam1Indices,
-    usedTeam2Indices,
-    remainingMatches,
-    remainingTeam1Points,
-    remainingTeam2Points
-  ) => {
-    if (remainingMatches === 0) {
-      return { winProb: 0, matchups: [] };
-    }
-
-    // Get available players
-    const availableTeam1Players = team1Players
-      .map((p, i) => ({ ...p, index: i }))
-      .filter(p => !usedTeam1Indices.has(p.index));
-
-    const availableTeam2Players = team2Players
-      .map((p, i) => ({ ...p, index: i }))
-      .filter(p => !usedTeam2Indices.has(p.index));
-
-    if (availableTeam1Players.length < remainingMatches || availableTeam2Players.length < remainingMatches) {
-      return null;
-    }
-
-    // Generate combinations for team1
-    const team1Combos = combinations(availableTeam1Players, remainingMatches);
-    const validTeam1Combos = team1Combos.filter(combo => {
-      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
-      return totalPoints <= remainingTeam1Points;
-    });
-
-    if (validTeam1Combos.length === 0) {
-      return null;
-    }
-
-    // Generate combinations for team2
-    const team2Combos = combinations(availableTeam2Players, remainingMatches);
-    const validTeam2Combos = team2Combos.filter(combo => {
-      const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
-      return totalPoints <= remainingTeam2Points;
-    });
-
-    if (validTeam2Combos.length === 0) {
-      return null;
-    }
-
-    // Find best possible outcome for Team 2: maximize win probability across all valid combinations
-    let bestWinProb = -1;
-    let bestMatchups = null;
-
-    // Try all Team 2 combinations and find the best possible matchups
-    for (const team2Combo of validTeam2Combos) {
-      for (const team1Combo of validTeam1Combos) {
-        const team1Perms = permutations(team1Combo);
-
-        for (const team1Perm of team1Perms) {
-          const matchups = [];
-          let totalWinProb = 0;
-          let valid = true;
-
-          for (let i = 0; i < team2Combo.length; i++) {
-            const p1Idx = team1Perm[i].index;
-            const p2Idx = team2Combo[i].index;
-            const matchup = matchupData[p1Idx]?.[p2Idx];
-
-            if (!matchup || !matchup.race) {
-              valid = false;
-              break;
-            }
-
-            const prob = extractProbability(matchup.odds);
-            if (prob === null) {
-              valid = false;
-              break;
-            }
-
-            // From Team 2's perspective, win prob is 1 - prob
-            totalWinProb += (1 - prob);
-            matchups.push({
-              playerIndex: p2Idx,
-              player: team2Players[p2Idx],
-              opponent: team1Players[p1Idx],
-              winProb: 1 - prob,
-              race: matchup.race
-            });
-          }
-
-          // Track the best possible outcome for Team 2
+          // Track the best possible outcome for the specified team
           if (valid && totalWinProb > bestWinProb) {
             bestWinProb = totalWinProb;
             bestMatchups = matchups;
@@ -331,14 +237,15 @@ function BlindPlayerSelector({
       const newUsedTeam1Indices = new Set([...selectedTeam1Indices, blindTeam1Index]);
       const newUsedTeam2Indices = new Set([...selectedTeam2Indices, worstCounterPick.index]);
 
-      const bestRemaining = calculateBestRemainingLineupTeam1(
+      const bestRemaining = calculateBestRemainingLineup(
         blindTeam1Index,
         worstCounterPick.index,
         newUsedTeam1Indices,
         newUsedTeam2Indices,
         newRemainingMatches,
         newRemainingTeam1Points,
-        newRemainingTeam2Points
+        newRemainingTeam2Points,
+        1
       );
 
       if (!bestRemaining) {
@@ -490,14 +397,15 @@ function BlindPlayerSelector({
       const newUsedTeam1Indices = new Set([...selectedTeam1Indices, bestCounterPick.index]);
       const newUsedTeam2Indices = new Set([...selectedTeam2Indices, blindTeam2Index]);
 
-      const bestRemaining = calculateBestRemainingLineupTeam2(
+      const bestRemaining = calculateBestRemainingLineup(
         bestCounterPick.index,
         blindTeam2Index,
         newUsedTeam1Indices,
         newUsedTeam2Indices,
         newRemainingMatches,
         newRemainingTeam1Points,
-        newRemainingTeam2Points
+        newRemainingTeam2Points,
+        2
       );
 
       if (!bestRemaining) {
