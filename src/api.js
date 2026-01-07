@@ -21,7 +21,6 @@ export async function getDivisions() {
     if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
       throw new Error('Received HTML instead of JSON. The API may be unavailable.');
     }
-    console.log(response)
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -294,7 +293,6 @@ export async function getMatchupData(matchId) {
     matchupData.push(row);
   }
 
-  console.log(team1)
   return {
     team1Name: team1?.name || team1?.teamName || 'Team 1',
     team2Name: team2?.name || team2?.teamName || 'Team 2',
