@@ -1,7 +1,131 @@
 import React, { useMemo } from 'react';
 import { extractProbability, combinations, permutations } from '../utils';
 
-const MINIMUM_WINNING_ODDS = 0.6
+const MINIMUM_WINNING_ODDS = 0.6;
+
+// Reusable component for blind match section
+function BlindMatchSection({ score }) {
+  return (
+    <div className="blind-match-section">
+      <div className="section-title">Blind Match (Worst Case Counter-Pick)</div>
+      <div className="matchup-details">
+        <span className="player-vs">
+          {score.player.name} ({score.player.rating}) vs {score.counterPick.name} ({score.counterPick.rating})
+        </span>
+        <span className="matchup-stats">
+          <span className={`win-prob ${score.blindMatchWinProb > MINIMUM_WINNING_ODDS ? 'match-won' : ''}`}>
+            Win Prob: {score.blindMatchWinPercent.toFixed(1)}%
+            {score.blindMatchWon > 0 && <span className="match-won-badge"> ✓ WON</span>}
+          </span>
+          <span className="race">Race: {score.blindMatchRace}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Reusable component for remaining lineup section
+function RemainingLineupSection({ score, numMatches, selectedMatches }) {
+  return (
+    <div className="remaining-lineup-section">
+      <div className="section-title">
+        Best Remaining Lineup ({numMatches - selectedMatches.length - 1} matches)
+        {score.remainingMatchesWon > 0 && (
+          <span className="matches-won-count"> - {score.remainingMatchesWon} matches won ({'>'}60%)</span>
+        )}
+      </div>
+      {score.remainingMatchups.length > 0 ? (
+        <div className="remaining-matchups">
+          {score.remainingMatchups.map((matchup, mIdx) => {
+            const isWon = matchup.winProb > MINIMUM_WINNING_ODDS;
+            return (
+              <div key={mIdx} className={`remaining-matchup ${isWon ? 'match-won' : ''}`}>
+                <span className="matchup-players">
+                  {matchup.player.name} ({matchup.player.rating}) vs {matchup.opponent.name} ({matchup.opponent.rating})
+                </span>
+                <span className={`matchup-winprob ${isWon ? 'match-won' : ''}`}>
+                  {(matchup.winProb * 100).toFixed(1)}%
+                  {isWon && <span className="match-won-badge"> ✓</span>}
+                </span>
+                <span className="matchup-race">{matchup.race}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="no-remaining">No valid remaining matchups found</div>
+      )}
+    </div>
+  );
+}
+
+// Reusable component for blind player stats
+function BlindPlayerStats({ score, numMatches, showBlindMatchWinPercent = false }) {
+  return (
+    <div className="blind-player-stats">
+      <div className="stat stat-primary">
+        <strong>Projected Matches Won:</strong> {score.totalMatchesWon} / {numMatches}
+        <span className="stat-detail">
+          {' '}(Selected: {score.selectedMatchesWon}, Blind: {score.blindMatchWon}, Remaining: {score.remainingMatchesWon})
+        </span>
+      </div>
+      {showBlindMatchWinPercent && (
+        <div className="stat">
+          <strong>Blind Match Win %:</strong> {score.blindMatchWinPercent.toFixed(1)}%
+        </div>
+      )}
+      <div className="stat">
+        <strong>Avg Remaining Win %:</strong> {(score.avgRemainingWinProb * 100).toFixed(1)}%
+      </div>
+      <div className="stat stat-secondary">
+        <strong>Total Win Prob:</strong> {(score.totalWinProb * 100).toFixed(1)}% ({(score.avgWinProb * 100).toFixed(1)}% avg)
+      </div>
+    </div>
+  );
+}
+
+// Reusable component for blind player card
+function BlindPlayerCard({ score, rank, numMatches, selectedMatches }) {
+  return (
+    <div className="blind-player-card">
+      <div className="blind-player-header">
+        <span className="blind-player-rank">#{rank}</span>
+        <div className="blind-player-info">
+          <span className="blind-player-name">{score.player.name}</span>
+          <span className="blind-player-rating">Rating: {score.player.rating}</span>
+        </div>
+      </div>
+
+      <BlindMatchSection score={score} />
+      <RemainingLineupSection score={score} numMatches={numMatches} selectedMatches={selectedMatches} />
+      <BlindPlayerStats score={score} numMatches={numMatches} />
+    </div>
+  );
+}
+
+// Reusable component for team column
+function BlindPlayerColumn({ teamName, scores, numMatches, selectedMatches }) {
+  return (
+    <div className="blind-players-column">
+      <h3>{teamName}</h3>
+      {scores.length === 0 ? (
+        <p className="no-blind-players">No valid blind players found for {teamName}</p>
+      ) : (
+        <div className="blind-players-list">
+          {scores.slice(0, 3).map((score, idx) => (
+            <BlindPlayerCard
+              key={idx}
+              score={score}
+              rank={idx + 1}
+              numMatches={numMatches}
+              selectedMatches={selectedMatches}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * BlindPlayerSelector Component
@@ -267,6 +391,17 @@ function BlindPlayerSelector({
         return sum + (team2Players[m.team2Index]?.rating || 0);
       }, 0);
 
+      // Calculate how many selected matches are "won" (>60% win prob) from this team's perspective
+      const selectedMatchesWon = selectedMatches.filter(match => {
+        const matchup = matchupData[match.team1Index]?.[match.team2Index];
+        if (!matchup) return false;
+        const prob = extractProbability(matchup.odds);
+        if (prob === null) return false;
+        // Calculate win prob from the team's perspective
+        const winProb = teamNumber === 1 ? prob : (1 - prob);
+        return winProb > 0.5;
+      }).length;
+
       // Calculate remaining resources (matches and points) after selected matches
       const remainingMatches = numMatches - selectedMatches.length;
       const remainingTeam1Points = maxPoints - selectedTeam1Points;
@@ -463,8 +598,8 @@ function BlindPlayerSelector({
           matchup => matchup.winProb > 0.5
         ).length;
 
-        // Total matches won = blind match + remaining matches won
-        const totalMatchesWon = blindMatchWon + remainingMatchesWon;
+        // Total matches won = selected matches + blind match + remaining matches won
+        const totalMatchesWon = selectedMatchesWon + blindMatchWon + remainingMatchesWon;
 
         // Calculate average win probability for remaining matches (for display)
         const avgRemainingWinProb = bestRemaining.matchups.length > 0
@@ -490,6 +625,7 @@ function BlindPlayerSelector({
           blindMatchWinProb: blindMatchWinProb,
           blindMatchWinPercent: blindMatchWinProb * 100,
           blindMatchWon: blindMatchWon,
+          selectedMatchesWon: selectedMatchesWon,
           remainingLineupWinProb: bestRemaining.winProb,
           remainingMatchesWon: remainingMatchesWon,
           remainingMatchups: bestRemaining.matchups,
@@ -558,175 +694,18 @@ function BlindPlayerSelector({
         The algorithm assumes the opponent will choose the lowest-rated player with ≥60% win probability as their counter-pick.
       </p>
       <div className="blind-players-columns">
-        <div className="blind-players-column">
-          <h3>{team1Name}</h3>
-          {blindPlayerScoresTeam1.length === 0 ? (
-            <p className="no-blind-players">No valid blind players found for {team1Name}</p>
-          ) : (
-            <div className="blind-players-list">
-              {blindPlayerScoresTeam1.slice(0, 3).map((score, idx) => (
-                <div key={idx} className="blind-player-card">
-                  <div className="blind-player-header">
-                    <span className="blind-player-rank">#{idx + 1}</span>
-                    <div className="blind-player-info">
-                      <span className="blind-player-name">{score.player.name}</span>
-                      <span className="blind-player-rating">Rating: {score.player.rating}</span>
-                    </div>
-                  </div>
-
-                  <div className="blind-match-section">
-                    <div className="section-title">Blind Match (Worst Case Counter-Pick)</div>
-                    <div className="matchup-details">
-                      <span className="player-vs">
-                        {score.player.name} ({score.player.rating}) vs {score.counterPick.name} ({score.counterPick.rating})
-                      </span>
-                      <span className="matchup-stats">
-                        <span className={`win-prob ${score.blindMatchWinProb > MINIMUM_WINNING_ODDS ? 'match-won' : ''}`}>
-                          Win Prob: {score.blindMatchWinPercent.toFixed(1)}%
-                          {score.blindMatchWon > 0 && <span className="match-won-badge"> ✓ WON</span>}
-                        </span>
-                        <span className="race">Race: {score.blindMatchRace}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="remaining-lineup-section">
-                    <div className="section-title">
-                      Best Remaining Lineup ({numMatches - selectedMatches.length - 1} matches)
-                      {score.remainingMatchesWon > 0 && (
-                        <span className="matches-won-count"> - {score.remainingMatchesWon} matches won ({'>'}60%)</span>
-                      )}
-                    </div>
-                    {score.remainingMatchups.length > 0 ? (
-                      <div className="remaining-matchups">
-                        {score.remainingMatchups.map((matchup, mIdx) => {
-                          const isWon = matchup.winProb > MINIMUM_WINNING_ODDS;
-                          return (
-                            <div key={mIdx} className={`remaining-matchup ${isWon ? 'match-won' : ''}`}>
-                              <span className="matchup-players">
-                                {matchup.player.name} ({matchup.player.rating}) vs {matchup.opponent.name} ({matchup.opponent.rating})
-                              </span>
-                              <span className={`matchup-winprob ${isWon ? 'match-won' : ''}`}>
-                                {(matchup.winProb * 100).toFixed(1)}%
-                                {isWon && <span className="match-won-badge"> ✓</span>}
-                              </span>
-                              <span className="matchup-race">{matchup.race}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="no-remaining">No valid remaining matchups found</div>
-                    )}
-                  </div>
-
-                  <div className="blind-player-stats">
-                    <div className="stat stat-primary">
-                      <strong>Projected Matches Won:</strong> {score.totalMatchesWon} / {numMatches - selectedMatches.length}
-                      <span className="stat-detail">
-                        {' '}(Blind: {score.blindMatchWon}, Remaining: {score.remainingMatchesWon})
-                      </span>
-                    </div>
-                    <div className="stat">
-                      <strong>Blind Match Win %:</strong> {score.blindMatchWinPercent.toFixed(1)}%
-                    </div>
-                    <div className="stat">
-                      <strong>Avg Remaining Win %:</strong> {(score.avgRemainingWinProb * 100).toFixed(1)}%
-                    </div>
-                    <div className="stat stat-secondary">
-                      <strong>Total Win Prob:</strong> {(score.totalWinProb * 100).toFixed(1)}% ({(score.avgWinProb * 100).toFixed(1)}% avg)
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="blind-players-column">
-          <h3>{team2Name}</h3>
-          {blindPlayerScoresTeam2.length === 0 ? (
-            <p className="no-blind-players">No valid blind players found for {team2Name}</p>
-          ) : (
-            <div className="blind-players-list">
-              {blindPlayerScoresTeam2.slice(0, 3).map((score, idx) => (
-                <div key={idx} className="blind-player-card">
-                  <div className="blind-player-header">
-                    <span className="blind-player-rank">#{idx + 1}</span>
-                    <div className="blind-player-info">
-                      <span className="blind-player-name">{score.player.name}</span>
-                      <span className="blind-player-rating">Rating: {score.player.rating}</span>
-                    </div>
-                  </div>
-
-                  <div className="blind-match-section">
-                    <div className="section-title">Blind Match (Worst Case Counter-Pick)</div>
-                    <div className="matchup-details">
-                      <span className="player-vs">
-                        {score.player.name} ({score.player.rating}) vs {score.counterPick.name} ({score.counterPick.rating})
-                      </span>
-                      <span className="matchup-stats">
-                        <span className={`win-prob ${score.blindMatchWinProb > MINIMUM_WINNING_ODDS ? 'match-won' : ''}`}>
-                          Win Prob: {score.blindMatchWinPercent.toFixed(1)}%
-                          {score.blindMatchWon > 0 && <span className="match-won-badge"> ✓ WON</span>}
-                        </span>
-                        <span className="race">Race: {score.blindMatchRace}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="remaining-lineup-section">
-                    <div className="section-title">
-                      Best Remaining Lineup ({numMatches - selectedMatches.length - 1} matches)
-                      {score.remainingMatchesWon > 0 && (
-                        <span className="matches-won-count"> - {score.remainingMatchesWon} matches won ({'>'}60%)</span>
-                      )}
-                    </div>
-                    {score.remainingMatchups.length > 0 ? (
-                      <div className="remaining-matchups">
-                        {score.remainingMatchups.map((matchup, mIdx) => {
-                          const isWon = matchup.winProb > MINIMUM_WINNING_ODDS;
-                          return (
-                            <div key={mIdx} className={`remaining-matchup ${isWon ? 'match-won' : ''}`}>
-                              <span className="matchup-players">
-                                {matchup.player.name} ({matchup.player.rating}) vs {matchup.opponent.name} ({matchup.opponent.rating})
-                              </span>
-                              <span className={`matchup-winprob ${isWon ? 'match-won' : ''}`}>
-                                {(matchup.winProb * 100).toFixed(1)}%
-                                {isWon && <span className="match-won-badge"> ✓</span>}
-                              </span>
-                              <span className="matchup-race">{matchup.race}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="no-remaining">No valid remaining matchups found</div>
-                    )}
-                  </div>
-
-                  <div className="blind-player-stats">
-                    <div className="stat stat-primary">
-                      <strong>Projected Matches Won:</strong> {score.totalMatchesWon} / {numMatches - selectedMatches.length}
-                      <span className="stat-detail">
-                        {' '}(Blind: {score.blindMatchWon}, Remaining: {score.remainingMatchesWon})
-                      </span>
-                    </div>
-                    <div className="stat">
-                      <strong>Blind Match Win %:</strong> {score.blindMatchWinPercent.toFixed(1)}%
-                    </div>
-                    <div className="stat">
-                      <strong>Avg Remaining Win %:</strong> {(score.avgRemainingWinProb * 100).toFixed(1)}%
-                    </div>
-                    <div className="stat stat-secondary">
-                      <strong>Total Win Prob:</strong> {(score.totalWinProb * 100).toFixed(1)}% ({(score.avgWinProb * 100).toFixed(1)}% avg)
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <BlindPlayerColumn
+          teamName={team1Name}
+          scores={blindPlayerScoresTeam1}
+          numMatches={numMatches}
+          selectedMatches={selectedMatches}
+        />
+        <BlindPlayerColumn
+          teamName={team2Name}
+          scores={blindPlayerScoresTeam2}
+          numMatches={numMatches}
+          selectedMatches={selectedMatches}
+        />
       </div>
     </div>
   );
