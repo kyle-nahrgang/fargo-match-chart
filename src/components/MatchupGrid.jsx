@@ -53,6 +53,13 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
     return selectedMatches.some(m => m.team1Index === team1Index && m.team2Index === team2Index);
   };
 
+  // Check if a player has a selected match
+  const hasPlayerSelectedMatch = (playerIndex, isTeam1) => {
+    return selectedMatches.some(m =>
+      isTeam1 ? m.team1Index === playerIndex : m.team2Index === playerIndex
+    );
+  };
+
   // Check if there's a feasible solution with given constraints
   const hasFeasibleSolution = (usedTeam1Indices, usedTeam2Indices, remainingMatches, remainingTeam1Points, remainingTeam2Points) => {
     if (remainingMatches === 0) {
@@ -325,16 +332,18 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
           const rowIndex = parseInt(info.row.id);
           const player = team1Players[rowIndex];
           const playerDisabled = isPlayerDisabled(rowIndex, true);
+          const hasSelectedMatch = hasPlayerSelectedMatch(rowIndex, true);
           const isHighlighted = highlightedRow === rowIndex;
+          const headerDisabled = hasSelectedMatch;
 
           return (
             <div
-              className={`row-header-cell ${playerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
-              onClick={() => handleRowHeaderClick(rowIndex)}
-              style={{ cursor: 'pointer' }}
+              className={`row-header-cell ${playerDisabled ? 'player-disabled' : ''} ${headerDisabled ? 'header-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+              onClick={() => !headerDisabled && handleRowHeaderClick(rowIndex)}
+              style={{ cursor: headerDisabled ? 'not-allowed' : 'pointer' }}
             >
-              <div className={`player-name ${playerDisabled ? 'disabled' : ''}`}>{player.name}</div>
-              <div className={`player-rating ${playerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
+              <div className={`player-name ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+              <div className={`player-rating ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
             </div>
           );
         },
@@ -351,14 +360,16 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
         columnHelper.accessor(`matchup_${index}`, {
           header: () => {
             const isHighlighted = highlightedColumn === index;
+            const hasSelectedMatch = hasPlayerSelectedMatch(index, false);
+            const headerDisabled = hasSelectedMatch;
             return (
               <div
-                className={`col-header-cell ${playerDisabled ? 'player-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
-                onClick={() => handleColumnHeaderClick(index)}
-                style={{ cursor: 'pointer' }}
+                className={`col-header-cell ${playerDisabled ? 'player-disabled' : ''} ${headerDisabled ? 'header-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+                onClick={() => !headerDisabled && handleColumnHeaderClick(index)}
+                style={{ cursor: headerDisabled ? 'not-allowed' : 'pointer' }}
               >
-                <div className={`player-name ${playerDisabled ? 'disabled' : ''}`}>{player.name}</div>
-                <div className={`player-rating ${playerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
+                <div className={`player-name ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+                <div className={`player-rating ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
               </div>
             );
           },
