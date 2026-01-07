@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { extractProbability, combinations, permutations } from '../utils';
 
+const MINIMUM_WINNING_ODDS = 0.6
+
 /**
  * BlindPlayerSelector Component
  *
@@ -18,11 +20,15 @@ import { extractProbability, combinations, permutations } from '../utils';
  *    - This represents the "worst case" scenario for the blind-picking team
  *
  * 2. SCORING METHODOLOGY:
+ *    We focus on MATCHES WON (>60% win probability) rather than total win probability.
+ *    A 95% chance to win still only counts as 1 match point, so we prioritize maximizing
+ *    the number of matches where we have >60% win probability.
+ *
  *    For each potential blind pick, we calculate:
- *    a) Blind Match Win Probability: Win prob of blind pick vs worst-case counter-pick
- *    b) Remaining Lineup Win Probability: Best possible win prob for remaining matches
- *    c) Total Win Probability: Sum of (a) + (b)
- *    d) Average Win Probability: Total / numMatches
+ *    a) Blind Match Win: 1 if win prob >60%, 0 otherwise
+ *    b) Remaining Matches Won: Count of remaining matches with >60% win prob
+ *    c) Total Matches Won: (a) + (b)
+ *    d) Win Percentages: Display win % for blind match and average for remaining matches
  *
  * 3. REMAINING LINEUP CALCULATION:
  *    After simulating the blind match, we find the optimal lineup for remaining matches by:
@@ -31,13 +37,14 @@ import { extractProbability, combinations, permutations } from '../utils';
  *    - Selecting the combination that maximizes win probability for the blind-picking team
  *
  * 4. RANKING:
- *    Players are ranked by total win probability (descending), with flexibility as a tiebreaker
+ *    Players are ranked by total matches won (>60% win prob) in descending order.
+ *    Tiebreakers: (1) Total win probability, (2) Flexibility score
  *
  * KEY INSIGHT:
  * A good blind pick is one that:
- *    - Performs reasonably well even against optimal counter-picks
- *    - Leaves enough flexibility and points for strong remaining matchups
- *    - Maximizes overall team win probability across all matches
+ *    - Wins the blind match (>60% win prob) even against optimal counter-picks
+ *    - Leaves enough flexibility and points for multiple strong remaining matchups (>60% win prob)
+ *    - Maximizes the total number of matches won (>60% win prob) rather than total win probability
  */
 function BlindPlayerSelector({
   team1Name = 'Team 1',
@@ -218,21 +225,24 @@ function BlindPlayerSelector({
    *    - Find the opponent's optimal counter-pick (lowest-rated player with >= 60% win prob)
    *    - This represents the "worst case" scenario for the blind pick
    *
-   * 2. CALCULATE BLIND MATCH SCORE:
-   *    - Determine win probability of blind pick vs counter-pick
-   *    - This is the "guaranteed" performance (assuming optimal counter-pick)
-   *
-   * 3. CALCULATE REMAINING LINEUP SCORE:
-   *    - After blind match, find best possible lineup for remaining matches
-   *    - Uses exhaustive search to find optimal player combinations and matchups
-   *
-   * 4. COMBINE SCORES:
-   *    - Total Win Prob = Blind Match Win Prob + Remaining Lineup Win Prob
-   *    - Average Win Prob = Total Win Prob / numMatches
-   *
-   * 5. RANK PLAYERS:
-   *    - Sort by total win probability (descending)
-   *    - Use flexibility as tiebreaker (whether remaining lineup exists)
+ * 2. CALCULATE BLIND MATCH SCORE:
+ *    - Determine win probability of blind pick vs counter-pick
+ *    - Count as "won" if win prob >60% (1 match point), otherwise 0
+ *    - Store win percentage for display
+ *
+ * 3. CALCULATE REMAINING LINEUP SCORE:
+ *    - After blind match, find best possible lineup for remaining matches
+ *    - Uses exhaustive search to find optimal player combinations and matchups
+ *    - Count how many remaining matches have >60% win probability
+ *
+ * 4. COMBINE SCORES:
+ *    - Total Matches Won = Blind Match Won (0 or 1) + Remaining Matches Won (count)
+ *    - Also calculate win percentages for display purposes
+ *
+ * 5. RANK PLAYERS:
+ *    - Sort by total matches won (descending)
+ *    - Tiebreaker 1: Total win probability
+ *    - Tiebreaker 2: Flexibility score
    *
    * @param {number} teamNumber - Which team to calculate scores for (1 or 2)
    * @returns {Array} - Sorted array of blind player scores, best first
@@ -289,12 +299,6 @@ function BlindPlayerSelector({
       const remainingCounterPoints = teamNumber === 1 ? remainingTeam2Points : remainingTeam1Points;
 
       const blindPlayerScores = [];
-
-      // COUNTER-PICK STRATEGY:
-      // We assume the opponent will pick the lowest-rated player with >= 60% win probability
-      // This threshold represents a "reasonable" counter-pick (not just any counter-pick)
-      // If no player meets this threshold, opponent picks their best available counter-pick
-      const REASONABLE_WIN_THRESHOLD = 0.6;
 
       // STEP 4: Evaluate each potential blind pick
       // For each candidate player, simulate the worst-case counter-pick scenario
@@ -361,7 +365,7 @@ function BlindPlayerSelector({
 
           // CHECK 1: Does this player meet the reasonable win threshold (>= 60%)?
           // If yes, consider it as a potential counter-pick
-          if (counterTeamWinProb >= REASONABLE_WIN_THRESHOLD) {
+          if (counterTeamWinProb >= MINIMUM_WINNING_ODDS) {
             // Among threshold-meeting players, prefer the LOWEST-RATED one
             // This simulates opponent saving points for other matches
             if (!counterPick || counterPlayerRating < counterPick.rating) {
@@ -447,14 +451,31 @@ function BlindPlayerSelector({
         }
 
         // STEP 6: Calculate overall score for this blind pick
-        // The score combines:
-        // - Blind match performance (how well does this pick do vs optimal counter-pick?)
-        // - Remaining lineup performance (how well can team perform after this pick?)
+        // We focus on MATCHES WON (>60% win probability) rather than total win probability
+        // A 95% chance to win still only counts as 1 match point, so we prioritize
+        // maximizing the number of matches where we have >60% win probability
+
+        // Count matches won in blind match (1 if >60%, 0 otherwise)
+        const blindMatchWon = blindMatchWinProb > MINIMUM_WINNING_ODDS ? 1 : 0;
+
+        const remainingMatchesWon = bestRemaining.matchups.filter(
+          // count remaining matches as "won" if over 50%
+          matchup => matchup.winProb > 0.5
+        ).length;
+
+        // Total matches won = blind match + remaining matches won
+        const totalMatchesWon = blindMatchWon + remainingMatchesWon;
+
+        // Calculate average win probability for remaining matches (for display)
+        const avgRemainingWinProb = bestRemaining.matchups.length > 0
+          ? bestRemaining.matchups.reduce((sum, m) => sum + m.winProb, 0) / bestRemaining.matchups.length
+          : 0;
+
+        // Calculate total win probability (for reference, but not primary ranking)
         const totalWinProb = blindMatchWinProb + bestRemaining.winProb;
         const avgWinProb = totalWinProb / numMatches;
 
         // Flexibility score: indicates whether valid remaining matchups exist
-        // This is a simple heuristic - a pick that leaves no valid options is less flexible
         const flexibilityScore = bestRemaining.matchups.length > 0 ? 1 : 0;
 
         // Get matchup race information for display purposes
@@ -467,25 +488,35 @@ function BlindPlayerSelector({
           player: blindPlayer,
           counterPick: finalCounterPick,
           blindMatchWinProb: blindMatchWinProb,
+          blindMatchWinPercent: blindMatchWinProb * 100,
+          blindMatchWon: blindMatchWon,
           remainingLineupWinProb: bestRemaining.winProb,
+          remainingMatchesWon: remainingMatchesWon,
+          remainingMatchups: bestRemaining.matchups,
+          totalMatchesWon: totalMatchesWon,
           totalWinProb,
           avgWinProb,
+          avgRemainingWinProb,
           flexibilityScore,
-          remainingMatchups: bestRemaining.matchups,
           blindMatchRace: blindMatchRace
         });
       }
 
-      // STEP 7: Rank blind picks by total win probability
-      // Sort in descending order (best picks first)
-      // Use flexibility as a tiebreaker (more flexible picks preferred)
+      // STEP 7: Rank blind picks by matches won (>60% win probability)
+      // Primary ranking: Total matches won (descending)
+      // Secondary ranking: Total win probability (descending) - for tiebreaking
+      // Tertiary ranking: Flexibility score
       return blindPlayerScores.sort((a, b) => {
-        // If scores are very close (within 0.1%), use flexibility as tiebreaker
-        if (Math.abs(a.totalWinProb - b.totalWinProb) < 0.001) {
-          return b.flexibilityScore - a.flexibilityScore;
+        // Primary: Sort by total matches won (descending)
+        if (a.totalMatchesWon !== b.totalMatchesWon) {
+          return b.totalMatchesWon - a.totalMatchesWon;
         }
-        // Otherwise, sort by total win probability (descending)
-        return b.totalWinProb - a.totalWinProb;
+        // Secondary: If matches won are equal, use total win probability
+        if (Math.abs(a.totalWinProb - b.totalWinProb) > 0.001) {
+          return b.totalWinProb - a.totalWinProb;
+        }
+        // Tertiary: Use flexibility as final tiebreaker
+        return b.flexibilityScore - a.flexibilityScore;
       });
     };
   }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches]);
@@ -493,7 +524,7 @@ function BlindPlayerSelector({
   if (!team1Players || !team2Players || !matchupData) {
     return (
       <div className="blind-player-selector-container">
-        <h2>Best Blind Players</h2>
+        <h2>Best Blind Throws</h2>
         <p className="no-blind-players">Waiting for matchup data...</p>
       </div>
     );
@@ -505,7 +536,7 @@ function BlindPlayerSelector({
   if (blindPlayerScoresTeam1.length === 0 && blindPlayerScoresTeam2.length === 0) {
     return (
       <div className="blind-player-selector-container">
-        <h2>Best Blind Players</h2>
+        <h2>Best Blind Throws</h2>
         <p className="no-blind-players">
           No valid blind players found.
           <br />
@@ -519,10 +550,12 @@ function BlindPlayerSelector({
 
   return (
     <div className="blind-player-selector-container">
-      <h2>Best Blind Players</h2>
+      <h2>Best Blind Throws</h2>
       <p className="blind-explanation">
         These are the best players for each team to pick "blind" (without knowing who the opponent will counter-pick).
-        The algorithm assumes the opponent will choose the lowest number most likely to win.
+        The algorithm maximizes the number of matches won ({'>'}60% win probability) rather than total win probability.
+        A 95% chance to win still only counts as 1 match point, so we prioritize picks that give us more matches with {'>'}60% win probability.
+        The algorithm assumes the opponent will choose the lowest-rated player with ≥60% win probability as their counter-pick.
       </p>
       <div className="blind-players-columns">
         <div className="blind-players-column">
@@ -548,25 +581,39 @@ function BlindPlayerSelector({
                         {score.player.name} ({score.player.rating}) vs {score.counterPick.name} ({score.counterPick.rating})
                       </span>
                       <span className="matchup-stats">
-                        <span className="win-prob">Win Prob: {(score.blindMatchWinProb * 100).toFixed(1)}%</span>
+                        <span className={`win-prob ${score.blindMatchWinProb > MINIMUM_WINNING_ODDS ? 'match-won' : ''}`}>
+                          Win Prob: {score.blindMatchWinPercent.toFixed(1)}%
+                          {score.blindMatchWon > 0 && <span className="match-won-badge"> ✓ WON</span>}
+                        </span>
                         <span className="race">Race: {score.blindMatchRace}</span>
                       </span>
                     </div>
                   </div>
 
                   <div className="remaining-lineup-section">
-                    <div className="section-title">Best Remaining Lineup ({numMatches - selectedMatches.length - 1} matches)</div>
+                    <div className="section-title">
+                      Best Remaining Lineup ({numMatches - selectedMatches.length - 1} matches)
+                      {score.remainingMatchesWon > 0 && (
+                        <span className="matches-won-count"> - {score.remainingMatchesWon} matches won ({'>'}60%)</span>
+                      )}
+                    </div>
                     {score.remainingMatchups.length > 0 ? (
                       <div className="remaining-matchups">
-                        {score.remainingMatchups.map((matchup, mIdx) => (
-                          <div key={mIdx} className="remaining-matchup">
-                            <span className="matchup-players">
-                              {matchup.player.name} ({matchup.player.rating}) vs {matchup.opponent.name} ({matchup.opponent.rating})
-                            </span>
-                            <span className="matchup-winprob">{(matchup.winProb * 100).toFixed(1)}%</span>
-                            <span className="matchup-race">{matchup.race}</span>
-                          </div>
-                        ))}
+                        {score.remainingMatchups.map((matchup, mIdx) => {
+                          const isWon = matchup.winProb > MINIMUM_WINNING_ODDS;
+                          return (
+                            <div key={mIdx} className={`remaining-matchup ${isWon ? 'match-won' : ''}`}>
+                              <span className="matchup-players">
+                                {matchup.player.name} ({matchup.player.rating}) vs {matchup.opponent.name} ({matchup.opponent.rating})
+                              </span>
+                              <span className={`matchup-winprob ${isWon ? 'match-won' : ''}`}>
+                                {(matchup.winProb * 100).toFixed(1)}%
+                                {isWon && <span className="match-won-badge"> ✓</span>}
+                              </span>
+                              <span className="matchup-race">{matchup.race}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="no-remaining">No valid remaining matchups found</div>
@@ -574,14 +621,20 @@ function BlindPlayerSelector({
                   </div>
 
                   <div className="blind-player-stats">
+                    <div className="stat stat-primary">
+                      <strong>Projected Matches Won:</strong> {score.totalMatchesWon} / {numMatches - selectedMatches.length}
+                      <span className="stat-detail">
+                        {' '}(Blind: {score.blindMatchWon}, Remaining: {score.remainingMatchesWon})
+                      </span>
+                    </div>
                     <div className="stat">
+                      <strong>Blind Match Win %:</strong> {score.blindMatchWinPercent.toFixed(1)}%
+                    </div>
+                    <div className="stat">
+                      <strong>Avg Remaining Win %:</strong> {(score.avgRemainingWinProb * 100).toFixed(1)}%
+                    </div>
+                    <div className="stat stat-secondary">
                       <strong>Total Win Prob:</strong> {(score.totalWinProb * 100).toFixed(1)}% ({(score.avgWinProb * 100).toFixed(1)}% avg)
-                    </div>
-                    <div className="stat">
-                      <strong>Blind Match:</strong> {(score.blindMatchWinProb * 100).toFixed(1)}%
-                    </div>
-                    <div className="stat">
-                      <strong>Remaining Lineup:</strong> {(score.remainingLineupWinProb * 100).toFixed(1)}%
                     </div>
                   </div>
                 </div>
@@ -613,25 +666,39 @@ function BlindPlayerSelector({
                         {score.player.name} ({score.player.rating}) vs {score.counterPick.name} ({score.counterPick.rating})
                       </span>
                       <span className="matchup-stats">
-                        <span className="win-prob">Win Prob: {(score.blindMatchWinProb * 100).toFixed(1)}%</span>
+                        <span className={`win-prob ${score.blindMatchWinProb > MINIMUM_WINNING_ODDS ? 'match-won' : ''}`}>
+                          Win Prob: {score.blindMatchWinPercent.toFixed(1)}%
+                          {score.blindMatchWon > 0 && <span className="match-won-badge"> ✓ WON</span>}
+                        </span>
                         <span className="race">Race: {score.blindMatchRace}</span>
                       </span>
                     </div>
                   </div>
 
                   <div className="remaining-lineup-section">
-                    <div className="section-title">Best Remaining Lineup ({numMatches - selectedMatches.length - 1} matches)</div>
+                    <div className="section-title">
+                      Best Remaining Lineup ({numMatches - selectedMatches.length - 1} matches)
+                      {score.remainingMatchesWon > 0 && (
+                        <span className="matches-won-count"> - {score.remainingMatchesWon} matches won ({'>'}60%)</span>
+                      )}
+                    </div>
                     {score.remainingMatchups.length > 0 ? (
                       <div className="remaining-matchups">
-                        {score.remainingMatchups.map((matchup, mIdx) => (
-                          <div key={mIdx} className="remaining-matchup">
-                            <span className="matchup-players">
-                              {matchup.player.name} ({matchup.player.rating}) vs {matchup.opponent.name} ({matchup.opponent.rating})
-                            </span>
-                            <span className="matchup-winprob">{(matchup.winProb * 100).toFixed(1)}%</span>
-                            <span className="matchup-race">{matchup.race}</span>
-                          </div>
-                        ))}
+                        {score.remainingMatchups.map((matchup, mIdx) => {
+                          const isWon = matchup.winProb > MINIMUM_WINNING_ODDS;
+                          return (
+                            <div key={mIdx} className={`remaining-matchup ${isWon ? 'match-won' : ''}`}>
+                              <span className="matchup-players">
+                                {matchup.player.name} ({matchup.player.rating}) vs {matchup.opponent.name} ({matchup.opponent.rating})
+                              </span>
+                              <span className={`matchup-winprob ${isWon ? 'match-won' : ''}`}>
+                                {(matchup.winProb * 100).toFixed(1)}%
+                                {isWon && <span className="match-won-badge"> ✓</span>}
+                              </span>
+                              <span className="matchup-race">{matchup.race}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="no-remaining">No valid remaining matchups found</div>
@@ -639,14 +706,20 @@ function BlindPlayerSelector({
                   </div>
 
                   <div className="blind-player-stats">
+                    <div className="stat stat-primary">
+                      <strong>Projected Matches Won:</strong> {score.totalMatchesWon} / {numMatches - selectedMatches.length}
+                      <span className="stat-detail">
+                        {' '}(Blind: {score.blindMatchWon}, Remaining: {score.remainingMatchesWon})
+                      </span>
+                    </div>
                     <div className="stat">
+                      <strong>Blind Match Win %:</strong> {score.blindMatchWinPercent.toFixed(1)}%
+                    </div>
+                    <div className="stat">
+                      <strong>Avg Remaining Win %:</strong> {(score.avgRemainingWinProb * 100).toFixed(1)}%
+                    </div>
+                    <div className="stat stat-secondary">
                       <strong>Total Win Prob:</strong> {(score.totalWinProb * 100).toFixed(1)}% ({(score.avgWinProb * 100).toFixed(1)}% avg)
-                    </div>
-                    <div className="stat">
-                      <strong>Blind Match:</strong> {(score.blindMatchWinProb * 100).toFixed(1)}%
-                    </div>
-                    <div className="stat">
-                      <strong>Remaining Lineup:</strong> {(score.remainingLineupWinProb * 100).toFixed(1)}%
                     </div>
                   </div>
                 </div>
