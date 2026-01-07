@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import './OptimalLineups.css';
 
 function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Players, team2Players, matchupData, maxPoints = 1900, numMatches = 4, selectedMatches = [] }) {
   // Generate combinations of k items from array

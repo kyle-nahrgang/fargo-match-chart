@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import MatchupGrid from './components/MatchupGrid';
 import OptimalLineups from './components/OptimalLineups';
 import BlindPlayerSelector from './components/BlindPlayerSelector';
-import './App.css';
 
 const DEFAULT_DIVISION_ID = 'c3012308-61dc-4ca5-b304-b3a00150a4f9';
 

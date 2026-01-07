@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import './BlindPlayerSelector.css';
 
 function BlindPlayerSelector({
   team1Name = 'Team 1',

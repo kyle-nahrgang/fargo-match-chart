@@ -5,7 +5,6 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import './MatchupGrid.css';
 
 const columnHelper = createColumnHelper();
 
