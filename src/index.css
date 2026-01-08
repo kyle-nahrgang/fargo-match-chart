@@ -425,6 +425,73 @@ code {
   margin-right: 5px;
 }
 
+/* Player Availability Styles */
+.player-availability-container {
+  margin-top: 20px;
+  margin-bottom: 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  width: 100%;
+}
+
+.availability-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.availability-title {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #667eea;
+  font-weight: 600;
+}
+
+.availability-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.availability-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.availability-checkbox:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+.availability-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #667eea;
+  flex-shrink: 0;
+}
+
+.checkbox-label {
+  font-size: 0.95rem;
+  color: #333;
+  flex: 1;
+}
+
+.checkbox-label .rating-text {
+  color: #666;
+  font-size: 0.85rem;
+  margin-left: 4px;
+}
+
 /* MatchupGrid Styles */
 .matchup-grid-container {
   margin-top: 30px;
@@ -1046,6 +1113,11 @@ code {
 
 /* Responsive Styles */
 @media (max-width: 1200px) {
+  .player-availability-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
   .blind-players-columns {
     grid-template-columns: 1fr;
     gap: 30px;

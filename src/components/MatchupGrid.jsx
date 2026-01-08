@@ -9,7 +9,7 @@ import { extractProbability, combinations, permutations } from '../utils';
 
 const columnHelper = createColumnHelper();
 
-function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
+function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1Players = new Set(), availableTeam2Players = new Set() }) {
   const { team1Name, team2Name, team1Players, team2Players, matchupData } = data;
   const maxPoints = 1900;
   const numMatches = 4;
@@ -66,21 +66,21 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
       return remainingTeam1Points >= 0 && remainingTeam2Points >= 0;
     }
 
-    // Get available players
-    const availableTeam1Players = team1Players
+    // Get available players (filter by both used indices and availability sets)
+    const availableTeam1PlayersFiltered = team1Players
       .map((p, i) => ({ ...p, index: i }))
-      .filter(p => !usedTeam1Indices.has(p.index));
+      .filter(p => !usedTeam1Indices.has(p.index) && availableTeam1Players.has(p.index));
 
-    const availableTeam2Players = team2Players
+    const availableTeam2PlayersFiltered = team2Players
       .map((p, i) => ({ ...p, index: i }))
-      .filter(p => !usedTeam2Indices.has(p.index));
+      .filter(p => !usedTeam2Indices.has(p.index) && availableTeam2Players.has(p.index));
 
-    if (availableTeam1Players.length < remainingMatches || availableTeam2Players.length < remainingMatches) {
+    if (availableTeam1PlayersFiltered.length < remainingMatches || availableTeam2PlayersFiltered.length < remainingMatches) {
       return false;
     }
 
     // Generate combinations for team1
-    const team1Combos = combinations(availableTeam1Players, remainingMatches);
+    const team1Combos = combinations(availableTeam1PlayersFiltered, remainingMatches);
 
     // Filter to valid point combinations for team1
     const validTeam1Combos = team1Combos.filter(combo => {
@@ -93,7 +93,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
     }
 
     // Generate combinations for team2
-    const team2Combos = combinations(availableTeam2Players, remainingMatches);
+    const team2Combos = combinations(availableTeam2PlayersFiltered, remainingMatches);
 
     // Filter to valid point combinations for team2
     const validTeam2Combos = team2Combos.filter(combo => {
@@ -143,8 +143,14 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
     const selectedIndices = isTeam1 ? selectedTeam1Indices : selectedTeam2Indices;
     const players = isTeam1 ? team1Players : team2Players;
     const player = players[playerIndex];
+    const availablePlayers = isTeam1 ? availableTeam1Players : availableTeam2Players;
 
     if (!player) return true;
+
+    // If player is not available, they are disabled
+    if (!availablePlayers.has(playerIndex)) {
+      return true;
+    }
 
     // If player is already selected, they are disabled
     if (selectedIndices.has(playerIndex)) {
@@ -352,12 +358,19 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
       }),
     ];
 
-    // Add a column for each team 2 player
+    // Add a column for each available team 2 player
     team2Players.forEach((player, index) => {
+      // Skip if player is not available
+      if (!availableTeam2Players.has(index)) {
+        return;
+      }
       const playerDisabled = isPlayerDisabled(index, false);
 
       cols.push(
         columnHelper.accessor(`matchup_${index}`, {
+          meta: {
+            playerIndex: index, // Store original player index for highlighting
+          },
           header: () => {
             const isHighlighted = highlightedColumn === index;
             const hasSelectedMatch = hasPlayerSelectedMatch(index, false);
@@ -419,15 +432,17 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
     });
 
     return cols;
-  }, [team1Players, team2Players, matchupData, selectedMatches, highlightedRow, highlightedColumn]);
+  }, [team1Players, team2Players, matchupData, selectedMatches, highlightedRow, highlightedColumn, availableTeam1Players, availableTeam2Players]);
 
-  // Create table data
+  // Create table data - only include available team 1 players
   const tableData = useMemo(() => {
-    return team1Players.map((_, index) => ({
-      id: index,
-      player: team1Players[index],
-    }));
-  }, [team1Players]);
+    return team1Players
+      .map((_, index) => ({
+        id: index,
+        player: team1Players[index],
+      }))
+      .filter((row) => availableTeam1Players.has(row.id));
+  }, [team1Players, availableTeam1Players]);
 
   const table = useReactTable({
     data: tableData,
@@ -444,7 +459,8 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header, headerIndex) => {
-                  const colIndex = headerIndex > 0 ? headerIndex - 1 : null; // First header is corner cell
+                  // Extract original player index from column meta (for team 2 columns)
+                  const colIndex = headerIndex > 0 ? (header.column.columnDef.meta?.playerIndex ?? null) : null;
                   const isColHighlighted = colIndex !== null && highlightedColumn === colIndex;
                   return (
                     <th
@@ -474,7 +490,8 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect }) {
               return (
                 <tr key={row.id} className={isRowHighlighted ? 'highlighted-row' : ''}>
                   {row.getVisibleCells().map((cell, cellIndex) => {
-                    const colIndex = cellIndex > 0 ? cellIndex - 1 : null; // First cell is row header
+                    // Extract original player index from column meta (for team 2 columns)
+                    const colIndex = cellIndex > 0 ? (cell.column.columnDef.meta?.playerIndex ?? null) : null;
                     const isColHighlighted = colIndex !== null && highlightedColumn === colIndex;
                     return (
                       <td

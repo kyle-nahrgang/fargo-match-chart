@@ -16,6 +16,8 @@ function App() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [selectedMatches, setSelectedMatches] = useState([]);
+  const [availableTeam1Players, setAvailableTeam1Players] = useState(new Set());
+  const [availableTeam2Players, setAvailableTeam2Players] = useState(new Set());
 
   // Fetch divisions and extract divisionId and matchId from URL parameters, or use defaults
   useEffect(() => {
@@ -91,6 +93,9 @@ function App() {
       const { getMatchupData } = await import('./api');
       const result = await getMatchupData(id.trim());
       setData(result);
+      // Initialize all players as available when data is loaded
+      setAvailableTeam1Players(new Set(result.team1Players.map((_, idx) => idx)));
+      setAvailableTeam2Players(new Set(result.team2Players.map((_, idx) => idx)));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -270,10 +275,68 @@ function App() {
 
         {data && (
           <>
+            <div className="player-availability-container">
+              <div className="availability-section">
+                <h3 className="availability-title">{data.team1Name} - Available Players</h3>
+                <div className="availability-checkboxes">
+                  {data.team1Players.map((player, index) => (
+                    <label key={index} className="availability-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={availableTeam1Players.has(index)}
+                        onChange={(e) => {
+                          const newSet = new Set(availableTeam1Players);
+                          if (e.target.checked) {
+                            newSet.add(index);
+                          } else {
+                            newSet.delete(index);
+                            // Clear any selected matches involving this player
+                            setSelectedMatches(prev => prev.filter(m => m.team1Index !== index));
+                          }
+                          setAvailableTeam1Players(newSet);
+                        }}
+                      />
+                      <span className="checkbox-label">
+                        {player.name} <span className="rating-text">({player.rating})</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="availability-section">
+                <h3 className="availability-title">{data.team2Name} - Available Players</h3>
+                <div className="availability-checkboxes">
+                  {data.team2Players.map((player, index) => (
+                    <label key={index} className="availability-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={availableTeam2Players.has(index)}
+                        onChange={(e) => {
+                          const newSet = new Set(availableTeam2Players);
+                          if (e.target.checked) {
+                            newSet.add(index);
+                          } else {
+                            newSet.delete(index);
+                            // Clear any selected matches involving this player
+                            setSelectedMatches(prev => prev.filter(m => m.team2Index !== index));
+                          }
+                          setAvailableTeam2Players(newSet);
+                        }}
+                      />
+                      <span className="checkbox-label">
+                        {player.name} <span className="rating-text">({player.rating})</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
             <MatchupGrid
               data={data}
               selectedMatches={selectedMatches}
               onMatchSelect={setSelectedMatches}
+              availableTeam1Players={availableTeam1Players}
+              availableTeam2Players={availableTeam2Players}
             />
             <BlindPlayerSelector
               team1Name={data.team1Name}
@@ -282,6 +345,8 @@ function App() {
               team2Players={data.team2Players}
               matchupData={data.matchupData}
               selectedMatches={selectedMatches}
+              availableTeam1Players={availableTeam1Players}
+              availableTeam2Players={availableTeam2Players}
             />
           </>
         )}

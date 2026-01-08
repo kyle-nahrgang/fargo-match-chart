@@ -178,7 +178,9 @@ function BlindPlayerSelector({
   matchupData,
   maxPoints = 1900,
   numMatches = 4,
-  selectedMatches = []
+  selectedMatches = [],
+  availableTeam1Players = new Set(),
+  availableTeam2Players = new Set()
 }) {
 
   /**
@@ -219,25 +221,25 @@ function BlindPlayerSelector({
       return { winProb: 0, matchups: [] };
     }
 
-    // STEP 1: Filter out players that have already been used
+    // STEP 1: Filter out players that have already been used and are not available
     // We need to find which players are still available for the remaining matches
-    const availableTeam1Players = team1Players
+    const availableTeam1PlayersFiltered = team1Players
       .map((p, i) => ({ ...p, index: i }))
-      .filter(p => !usedTeam1Indices.has(p.index));
+      .filter(p => !usedTeam1Indices.has(p.index) && availableTeam1Players.has(p.index));
 
-    const availableTeam2Players = team2Players
+    const availableTeam2PlayersFiltered = team2Players
       .map((p, i) => ({ ...p, index: i }))
-      .filter(p => !usedTeam2Indices.has(p.index));
+      .filter(p => !usedTeam2Indices.has(p.index) && availableTeam2Players.has(p.index));
 
     // Early exit if we don't have enough players for remaining matches
-    if (availableTeam1Players.length < remainingMatches || availableTeam2Players.length < remainingMatches) {
+    if (availableTeam1PlayersFiltered.length < remainingMatches || availableTeam2PlayersFiltered.length < remainingMatches) {
       return null;
     }
 
     // STEP 2: Generate all possible player combinations for Team 1
     // A combination is a set of players that could be used together
     // Example: If we need 2 matches and have players [A, B, C], combinations are [A,B], [A,C], [B,C]
-    const team1Combos = combinations(availableTeam1Players, remainingMatches);
+    const team1Combos = combinations(availableTeam1PlayersFiltered, remainingMatches);
 
     // Filter combinations to only include those that fit within the point budget
     // This ensures we only consider valid lineups that respect the maxPoints constraint
@@ -252,7 +254,7 @@ function BlindPlayerSelector({
 
     // STEP 3: Generate all possible player combinations for Team 2
     // Same process as Team 1 - find all valid player sets that fit the point budget
-    const team2Combos = combinations(availableTeam2Players, remainingMatches);
+    const team2Combos = combinations(availableTeam2PlayersFiltered, remainingMatches);
     const validTeam2Combos = team2Combos.filter(combo => {
       const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
       return totalPoints <= remainingTeam2Points;
@@ -412,24 +414,24 @@ function BlindPlayerSelector({
         return [];
       }
 
-      // STEP 2: Get list of available players (not yet used in selected matches)
-      const availableTeam1Players = team1Players
+      // STEP 2: Get list of available players (not yet used in selected matches and marked as available)
+      const availableTeam1PlayersFiltered = team1Players
         .map((p, i) => ({ ...p, index: i }))
-        .filter(p => !selectedTeam1Indices.has(p.index));
+        .filter(p => !selectedTeam1Indices.has(p.index) && availableTeam1Players.has(p.index));
 
-      const availableTeam2Players = team2Players
+      const availableTeam2PlayersFiltered = team2Players
         .map((p, i) => ({ ...p, index: i }))
-        .filter(p => !selectedTeam2Indices.has(p.index));
+        .filter(p => !selectedTeam2Indices.has(p.index) && availableTeam2Players.has(p.index));
 
       // Early exit if no players available
-      if (availableTeam1Players.length === 0 || availableTeam2Players.length === 0) {
+      if (availableTeam1PlayersFiltered.length === 0 || availableTeam2PlayersFiltered.length === 0) {
         return [];
       }
 
       // STEP 3: Determine which team's players we're evaluating (blind players)
       // and which team will counter-pick (counter players)
-      const blindPlayers = teamNumber === 1 ? availableTeam1Players : availableTeam2Players;
-      const counterPlayers = teamNumber === 1 ? availableTeam2Players : availableTeam1Players;
+      const blindPlayers = teamNumber === 1 ? availableTeam1PlayersFiltered : availableTeam2PlayersFiltered;
+      const counterPlayers = teamNumber === 1 ? availableTeam2PlayersFiltered : availableTeam1PlayersFiltered;
       const remainingBlindPoints = teamNumber === 1 ? remainingTeam1Points : remainingTeam2Points;
       const remainingCounterPoints = teamNumber === 1 ? remainingTeam2Points : remainingTeam1Points;
 
@@ -655,7 +657,7 @@ function BlindPlayerSelector({
         return b.flexibilityScore - a.flexibilityScore;
       });
     };
-  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches]);
+  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players]);
 
   if (!team1Players || !team2Players || !matchupData) {
     return (
