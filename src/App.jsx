@@ -5,6 +5,177 @@ import BlindPlayerSelector from './components/BlindPlayerSelector';
 
 const DEFAULT_DIVISION_ID = 'c3012308-61dc-4ca5-b304-b3a00150a4f9';
 
+// Helper function to parse date and categorize matches
+const parseMatchDate = (dateString) => {
+  if (!dateString) return null;
+
+  // Try JavaScript's Date constructor first (handles most formats)
+  let date = new Date(dateString);
+
+  // If date is invalid, try parsing common formats manually
+  if (isNaN(date.getTime())) {
+    // Try MM/DD/YYYY or MM-DD-YYYY format
+    const parts = dateString.trim().split(/[\/\-]/);
+    if (parts.length === 3) {
+      const part1 = parseInt(parts[0], 10);
+      const part2 = parseInt(parts[1], 10);
+      const part3 = parseInt(parts[2], 10);
+
+      // Determine format: if part1 > 12, likely DD/MM/YYYY
+      if (part1 > 12 && part2 <= 12) {
+        date = new Date(part3, part2 - 1, part1);
+      } else {
+        // Assume MM/DD/YYYY
+        date = new Date(part3, part1 - 1, part2);
+      }
+    }
+
+    // If still invalid, return null
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+  }
+
+  return date;
+};
+
+const categorizeMatches = (matches, currentMatchId) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const current = [];
+  const future = [];
+  const past = [];
+
+  // First pass: categorize all matches by date
+  const matchesByDate = [];
+
+  matches.forEach(match => {
+    const matchDate = parseMatchDate(match.date);
+
+    if (!matchDate) {
+      // If no date, put in future by default
+      future.push(match);
+      return;
+    }
+
+    const matchDateOnly = new Date(matchDate);
+    matchDateOnly.setHours(0, 0, 0, 0);
+
+    const diffTime = matchDateOnly.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      past.push(match);
+    } else {
+      matchesByDate.push({ match, date: matchDateOnly, diffDays });
+    }
+  });
+
+  // Find matches for today
+  const todayMatches = matchesByDate.filter(m => m.diffDays === 0);
+
+  // Determine which date to use for "current" group
+  let currentDate = null;
+  if (todayMatches.length > 0) {
+    // Use today's date
+    currentDate = today;
+  } else {
+    // Find the earliest future date
+    const futureMatches = matchesByDate.filter(m => m.diffDays > 0);
+    if (futureMatches.length > 0) {
+      // Sort by date and get the earliest
+      futureMatches.sort((a, b) => a.date.getTime() - b.date.getTime());
+      currentDate = futureMatches[0].date;
+    }
+  }
+
+  // Second pass: assign matches to groups
+  matchesByDate.forEach(({ match, date, diffDays }) => {
+    // If it's the current match, always put it in current group
+    if (match.matchId === currentMatchId) {
+      current.push(match);
+      return;
+    }
+
+    if (currentDate && date.getTime() === currentDate.getTime()) {
+      // Matches on the current date (today or next date)
+      current.push(match);
+    } else if (diffDays > 0) {
+      // Future matches (but not on the current date)
+      future.push(match);
+    }
+    // Past matches were already added in first pass
+  });
+
+  return { current, future, past };
+};
+
+// Helper functions for localStorage caching
+const getCacheKey = (matchId, key) => `fargo_match_${matchId}_${key}`;
+
+const loadFromCache = (matchId, key, defaultValue) => {
+  if (!matchId) return defaultValue;
+  try {
+    const cached = localStorage.getItem(getCacheKey(matchId, key));
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      // Convert arrays back to Sets for available players
+      if (key === 'availableTeam1Players' || key === 'availableTeam2Players') {
+        return new Set(parsed);
+      }
+      return parsed;
+    }
+  } catch (error) {
+    console.warn(`Failed to load cache for ${key}:`, error);
+  }
+  return defaultValue;
+};
+
+const saveToCache = (matchId, key, value) => {
+  if (!matchId) return;
+  try {
+    // Convert Sets to arrays for storage
+    const toStore = value instanceof Set ? Array.from(value) : value;
+    localStorage.setItem(getCacheKey(matchId, key), JSON.stringify(toStore));
+  } catch (error) {
+    console.warn(`Failed to save cache for ${key}:`, error);
+  }
+};
+
+const clearCache = (matchId) => {
+  if (!matchId) return;
+  try {
+    localStorage.removeItem(getCacheKey(matchId, 'availableTeam1Players'));
+    localStorage.removeItem(getCacheKey(matchId, 'availableTeam2Players'));
+    localStorage.removeItem(getCacheKey(matchId, 'selectedMatches'));
+  } catch (error) {
+    console.warn(`Failed to clear cache for match ${matchId}:`, error);
+  }
+};
+
+// Helper functions for storing most recent match per division
+const getRecentMatchKey = (divisionId) => `fargo_recent_match_${divisionId}`;
+
+const saveRecentMatch = (divisionId, matchId) => {
+  if (!divisionId || !matchId) return;
+  try {
+    localStorage.setItem(getRecentMatchKey(divisionId), matchId);
+  } catch (error) {
+    console.warn(`Failed to save recent match for division ${divisionId}:`, error);
+  }
+};
+
+const loadRecentMatch = (divisionId) => {
+  if (!divisionId) return null;
+  try {
+    return localStorage.getItem(getRecentMatchKey(divisionId));
+  } catch (error) {
+    console.warn(`Failed to load recent match for division ${divisionId}:`, error);
+    return null;
+  }
+};
+
 function App() {
   const [divisions, setDivisions] = useState([]);
   const [loadingDivisions, setLoadingDivisions] = useState(false);
@@ -21,23 +192,30 @@ function App() {
 
   // Fetch divisions and extract divisionId and matchId from URL parameters, or use defaults
   useEffect(() => {
-    fetchDivisions();
+    const initializeApp = async () => {
+      await fetchDivisions();
 
-    const params = new URLSearchParams(window.location.search);
-    const urlDivisionId = params.get('divisionId');
-    const urlMatchId = params.get('matchId');
+      const params = new URLSearchParams(window.location.search);
+      const urlDivisionId = params.get('divisionId');
+      const urlMatchId = params.get('matchId');
 
-    // Use URL divisionId if present, otherwise use default
-    const finalDivisionId = urlDivisionId || DEFAULT_DIVISION_ID;
-    setDivisionId(finalDivisionId);
+      // Use URL divisionId if present, otherwise use default
+      const finalDivisionId = urlDivisionId || DEFAULT_DIVISION_ID;
+      setDivisionId(finalDivisionId);
 
-    // Always fetch division schedule on mount
-    fetchDivisionSchedule(finalDivisionId);
+      if (urlMatchId) {
+        // If matchId is in URL, use it directly and save as recent match
+        setMatchId(urlMatchId);
+        saveRecentMatch(finalDivisionId, urlMatchId);
+        await fetchDivisionSchedule(finalDivisionId, false, urlMatchId);
+        await fetchMatchData(urlMatchId);
+      } else {
+        // If no matchId in URL, try to auto-load recent match
+        await fetchDivisionSchedule(finalDivisionId, true, null);
+      }
+    };
 
-    if (urlMatchId) {
-      setMatchId(urlMatchId);
-      fetchMatchData(urlMatchId);
-    }
+    initializeApp();
   }, []);
 
   const fetchDivisions = async () => {
@@ -55,7 +233,7 @@ function App() {
     }
   };
 
-  const fetchDivisionSchedule = async (divId) => {
+  const fetchDivisionSchedule = async (divId, autoLoadRecent = false, currentMatchId = null) => {
     if (!divId || !divId.trim()) {
       return;
     }
@@ -68,6 +246,24 @@ function App() {
       const { getDivisionSchedule } = await import('./api');
       const result = await getDivisionSchedule(divId.trim());
       setMatches(result);
+
+      // If auto-loading recent match and no matchId is set, try to load the cached recent match
+      if (autoLoadRecent && !currentMatchId) {
+        const recentMatchId = loadRecentMatch(divId.trim());
+        if (recentMatchId) {
+          // Verify the match still exists in the schedule
+          const matchExists = result.some(m => m.matchId === recentMatchId);
+          if (matchExists) {
+            setMatchId(recentMatchId);
+            // Update URL with matchId parameter
+            const params = new URLSearchParams(window.location.search);
+            params.set('divisionId', divId.trim());
+            params.set('matchId', recentMatchId);
+            window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+            await fetchMatchData(recentMatchId);
+          }
+        }
+      }
     } catch (err) {
       // Check if it's a CORS error
       if (err.message.includes('CORS') || err.message.includes('Access-Control')) {
@@ -93,9 +289,23 @@ function App() {
       const { getMatchupData } = await import('./api');
       const result = await getMatchupData(id.trim());
       setData(result);
-      // Initialize all players as available when data is loaded
-      setAvailableTeam1Players(new Set(result.team1Players.map((_, idx) => idx)));
-      setAvailableTeam2Players(new Set(result.team2Players.map((_, idx) => idx)));
+
+      // Try to load from cache, otherwise initialize all players as available
+      const cachedAvailableTeam1 = loadFromCache(
+        id.trim(),
+        'availableTeam1Players',
+        new Set(result.team1Players.map((_, idx) => idx))
+      );
+      const cachedAvailableTeam2 = loadFromCache(
+        id.trim(),
+        'availableTeam2Players',
+        new Set(result.team2Players.map((_, idx) => idx))
+      );
+      const cachedSelectedMatches = loadFromCache(id.trim(), 'selectedMatches', []);
+
+      setAvailableTeam1Players(cachedAvailableTeam1);
+      setAvailableTeam2Players(cachedAvailableTeam2);
+      setSelectedMatches(cachedSelectedMatches);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -118,9 +328,14 @@ function App() {
 
     // Clear current match data and matches
     setData(null);
+    if (matchId) {
+      clearCache(matchId);
+    }
     setMatchId('');
     setMatches([]);
     setSelectedMatches([]);
+    setAvailableTeam1Players(new Set());
+    setAvailableTeam2Players(new Set());
 
     await fetchDivisionSchedule(selectedDivisionId);
   };
@@ -130,8 +345,16 @@ function App() {
       return;
     }
 
+    // Clear cache for previous match if switching
+    if (matchId && matchId !== selectedMatchId) {
+      // Cache will be saved automatically via useEffect before clearing
+    }
+
     setMatchId(selectedMatchId);
-    setSelectedMatches([]); // Clear selected matches when switching matches
+    setSelectedMatches([]); // Will be restored from cache if available
+
+    // Save as most recent match for this division
+    saveRecentMatch(divisionId, selectedMatchId);
 
     // Update URL with matchId parameter
     const params = new URLSearchParams(window.location.search);
@@ -178,24 +401,49 @@ function App() {
               </div>
             )}
 
-            {matches.length > 0 && (
-              <div className="input-group">
-                <label htmlFor="matchSelect">Select Match:</label>
-                <select
-                  id="matchSelect"
-                  value={matchId}
-                  onChange={(e) => handleMatchSelect(e.target.value)}
-                  disabled={loading}
-                >
-                  <option value="">-- Select a match --</option>
-                  {matches.map((match) => (
-                    <option key={match.matchId} value={match.matchId}>
-                      {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {matches.length > 0 && (() => {
+              const { current, future, past } = categorizeMatches(matches, matchId);
+              return (
+                <div className="input-group">
+                  <label htmlFor="matchSelect">Select Match:</label>
+                  <select
+                    id="matchSelect"
+                    value={matchId}
+                    onChange={(e) => handleMatchSelect(e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="">-- Select a match --</option>
+                    {current.length > 0 && (
+                      <optgroup label="Current">
+                        {current.map((match) => (
+                          <option key={match.matchId} value={match.matchId}>
+                            {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {future.length > 0 && (
+                      <optgroup label="Future">
+                        {future.map((match) => (
+                          <option key={match.matchId} value={match.matchId}>
+                            {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {past.length > 0 && (
+                      <optgroup label="Past">
+                        {past.map((match) => (
+                          <option key={match.matchId} value={match.matchId}>
+                            {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -218,23 +466,48 @@ function App() {
                 </select>
               </div>
             )}
-            {matches.length > 0 && (
-              <div className="input-group">
-                <label htmlFor="matchSelectCurrent">Switch Match:</label>
-                <select
-                  id="matchSelectCurrent"
-                  value={matchId}
-                  onChange={(e) => handleMatchSelect(e.target.value)}
-                  disabled={loading}
-                >
-                  {matches.map((match) => (
-                    <option key={match.matchId} value={match.matchId}>
-                      {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {matches.length > 0 && (() => {
+              const { current, future, past } = categorizeMatches(matches, matchId);
+              return (
+                <div className="input-group">
+                  <label htmlFor="matchSelectCurrent">Switch Match:</label>
+                  <select
+                    id="matchSelectCurrent"
+                    value={matchId}
+                    onChange={(e) => handleMatchSelect(e.target.value)}
+                    disabled={loading}
+                  >
+                    {current.length > 0 && (
+                      <optgroup label="Current">
+                        {current.map((match) => (
+                          <option key={match.matchId} value={match.matchId}>
+                            {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {future.length > 0 && (
+                      <optgroup label="Future">
+                        {future.map((match) => (
+                          <option key={match.matchId} value={match.matchId}>
+                            {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {past.length > 0 && (
+                      <optgroup label="Past">
+                        {past.map((match) => (
+                          <option key={match.matchId} value={match.matchId}>
+                            {match.date ? `${match.date} - ` : ''}{match.team1} vs {match.team2} {match.location ? `(${match.location})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -244,9 +517,15 @@ function App() {
               <span>Match ID: <strong>{matchId}</strong></span>
               <button
                 onClick={() => {
+                  if (matchId) {
+                    clearCache(matchId);
+                  }
                   setData(null);
                   setMatchId('');
                   setError(null);
+                  setSelectedMatches([]);
+                  setAvailableTeam1Players(new Set());
+                  setAvailableTeam2Players(new Set());
                   // Keep divisionId and matches so user can select another match
                   const params = new URLSearchParams(window.location.search);
                   params.delete('matchId');
@@ -291,9 +570,14 @@ function App() {
                           } else {
                             newSet.delete(index);
                             // Clear any selected matches involving this player
-                            setSelectedMatches(prev => prev.filter(m => m.team1Index !== index));
+                            setSelectedMatches(prev => {
+                              const filtered = prev.filter(m => m.team1Index !== index);
+                              saveToCache(matchId, 'selectedMatches', filtered);
+                              return filtered;
+                            });
                           }
                           setAvailableTeam1Players(newSet);
+                          saveToCache(matchId, 'availableTeam1Players', newSet);
                         }}
                       />
                       <span className="checkbox-label">
@@ -318,9 +602,14 @@ function App() {
                           } else {
                             newSet.delete(index);
                             // Clear any selected matches involving this player
-                            setSelectedMatches(prev => prev.filter(m => m.team2Index !== index));
+                            setSelectedMatches(prev => {
+                              const filtered = prev.filter(m => m.team2Index !== index);
+                              saveToCache(matchId, 'selectedMatches', filtered);
+                              return filtered;
+                            });
                           }
                           setAvailableTeam2Players(newSet);
+                          saveToCache(matchId, 'availableTeam2Players', newSet);
                         }}
                       />
                       <span className="checkbox-label">
@@ -334,7 +623,10 @@ function App() {
             <MatchupGrid
               data={data}
               selectedMatches={selectedMatches}
-              onMatchSelect={setSelectedMatches}
+              onMatchSelect={(matches) => {
+                setSelectedMatches(matches);
+                saveToCache(matchId, 'selectedMatches', matches);
+              }}
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
             />
