@@ -237,6 +237,18 @@ code {
   margin-bottom: 10px;
 }
 
+.collapsible-header {
+  user-select: none;
+  padding: 10px 15px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background-color: #e8e8e8;
+}
+
 .blind-explanation {
   margin-bottom: 20px;
   padding: 12px;
@@ -257,9 +269,10 @@ code {
 
 .blind-players-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 30px;
   margin-top: 20px;
+  max-width: 100%;
 }
 
 .blind-players-column h3 {

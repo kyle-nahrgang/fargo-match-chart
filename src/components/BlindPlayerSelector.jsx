@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { extractProbability, combinations, permutations } from '../utils';
 
 const MINIMUM_WINNING_ODDS = 0.6;
@@ -180,7 +180,8 @@ function BlindPlayerSelector({
   numMatches = 4,
   selectedMatches = [],
   availableTeam1Players = new Set(),
-  availableTeam2Players = new Set()
+  availableTeam2Players = new Set(),
+  selectedTeam = 'home' // 'home' or 'away'
 }) {
 
   /**
@@ -671,44 +672,70 @@ function BlindPlayerSelector({
   const blindPlayerScoresTeam1 = calculateBlindPlayerScores(1);
   const blindPlayerScoresTeam2 = calculateBlindPlayerScores(2);
 
-  if (blindPlayerScoresTeam1.length === 0 && blindPlayerScoresTeam2.length === 0) {
+  // Determine which team to show based on selectedTeam prop
+  const showTeam1 = selectedTeam === 'away';
+  const showTeam2 = selectedTeam === 'home';
+
+  const selectedTeamScores = showTeam1 ? blindPlayerScoresTeam1 : blindPlayerScoresTeam2;
+  const selectedTeamName = showTeam1 ? team1Name : team2Name;
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  if (selectedTeamScores.length === 0) {
     return (
       <div className="blind-player-selector-container">
-        <h2>Best Blind Throws</h2>
-        <p className="no-blind-players">
-          No valid blind players found.
-          <br />
-          <small>
-            All matches may be selected, or no players meet the constraints.
-          </small>
-        </p>
+        <h2
+          className="collapsible-header"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <span>Best Blind Throws</span>
+          <span style={{ fontSize: '1.2rem', transition: 'transform 0.3s ease', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}>
+            ▼
+          </span>
+        </h2>
+        {!isCollapsed && (
+          <p className="no-blind-players">
+            No valid blind players found for {selectedTeamName}.
+            <br />
+            <small>
+              All matches may be selected, or no players meet the constraints.
+            </small>
+          </p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="blind-player-selector-container">
-      <h2>Best Blind Throws</h2>
-      <p className="blind-explanation">
-        These are the best players for each team to pick "blind" (without knowing who the opponent will counter-pick).
-        The algorithm maximizes the number of matches won ({'>'}60% win probability) rather than total win probability.
-        A 95% chance to win still only counts as 1 match point, so we prioritize picks that give us more matches with {'>'}60% win probability.
-        The algorithm assumes the opponent will choose the lowest-rated player with ≥60% win probability as their counter-pick.
-      </p>
-      <div className="blind-players-columns">
-        <BlindPlayerColumn
-          teamName={team1Name}
-          scores={blindPlayerScoresTeam1}
-          numMatches={numMatches}
-          selectedMatches={selectedMatches}
-        />
-        <BlindPlayerColumn
-          teamName={team2Name}
-          scores={blindPlayerScoresTeam2}
-          numMatches={numMatches}
-          selectedMatches={selectedMatches}
-        />
-      </div>
+      <h2
+        className="collapsible-header"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <span>Best Blind Throws</span>
+        <span style={{ fontSize: '1.2rem', transition: 'transform 0.3s ease', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}>
+          ▼
+        </span>
+      </h2>
+      {!isCollapsed && (
+        <>
+          <p className="blind-explanation">
+            These are the best players for {selectedTeamName} to pick "blind" (without knowing who the opponent will counter-pick).
+            The algorithm maximizes the number of matches won ({'>'}60% win probability) rather than total win probability.
+            A 95% chance to win still only counts as 1 match point, so we prioritize picks that give us more matches with {'>'}60% win probability.
+            The algorithm assumes the opponent will choose the lowest-rated player with ≥60% win probability as their counter-pick.
+          </p>
+          <div className="blind-players-columns">
+            <BlindPlayerColumn
+              teamName={selectedTeamName}
+              scores={selectedTeamScores}
+              numMatches={numMatches}
+              selectedMatches={selectedMatches}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

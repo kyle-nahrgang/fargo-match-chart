@@ -149,6 +149,7 @@ const clearCache = (matchId) => {
     localStorage.removeItem(getCacheKey(matchId, 'availableTeam1Players'));
     localStorage.removeItem(getCacheKey(matchId, 'availableTeam2Players'));
     localStorage.removeItem(getCacheKey(matchId, 'selectedMatches'));
+    localStorage.removeItem(getCacheKey(matchId, 'selectedTeam'));
   } catch (error) {
     console.warn(`Failed to clear cache for match ${matchId}:`, error);
   }
@@ -189,6 +190,7 @@ function App() {
   const [selectedMatches, setSelectedMatches] = useState([]);
   const [availableTeam1Players, setAvailableTeam1Players] = useState(new Set());
   const [availableTeam2Players, setAvailableTeam2Players] = useState(new Set());
+  const [selectedTeam, setSelectedTeam] = useState('home'); // 'home' or 'away'
 
   // Fetch divisions and extract divisionId and matchId from URL parameters, or use defaults
   useEffect(() => {
@@ -302,10 +304,12 @@ function App() {
         new Set(result.team2Players.map((_, idx) => idx))
       );
       const cachedSelectedMatches = loadFromCache(id.trim(), 'selectedMatches', []);
+      const cachedSelectedTeam = loadFromCache(id.trim(), 'selectedTeam', 'home');
 
       setAvailableTeam1Players(cachedAvailableTeam1);
       setAvailableTeam2Players(cachedAvailableTeam2);
       setSelectedMatches(cachedSelectedMatches);
+      setSelectedTeam(cachedSelectedTeam);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -336,6 +340,7 @@ function App() {
     setSelectedMatches([]);
     setAvailableTeam1Players(new Set());
     setAvailableTeam2Players(new Set());
+    setSelectedTeam('home');
 
     await fetchDivisionSchedule(selectedDivisionId);
   };
@@ -526,6 +531,7 @@ function App() {
                   setSelectedMatches([]);
                   setAvailableTeam1Players(new Set());
                   setAvailableTeam2Players(new Set());
+                  setSelectedTeam('home');
                   // Keep divisionId and matches so user can select another match
                   const params = new URLSearchParams(window.location.search);
                   params.delete('matchId');
@@ -630,6 +636,93 @@ function App() {
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
             />
+            <div className="team-selector-container" style={{ marginBottom: '30px', marginTop: '30px', padding: '20px 0', display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <div
+                className="team-toggle-slider"
+                onClick={() => {
+                  const newTeam = selectedTeam === 'home' ? 'away' : 'home';
+                  setSelectedTeam(newTeam);
+                  saveToCache(matchId, 'selectedTeam', newTeam);
+                }}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxWidth: '500px',
+                  height: '60px',
+                  backgroundColor: '#e0e0e0',
+                  borderRadius: '30px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                  overflow: 'hidden'
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: selectedTeam === 'home' ? '50%' : '0',
+                    width: '50%',
+                    height: '100%',
+                    backgroundColor: selectedTeam === 'home' ? '#667eea' : '#764ba2',
+                    borderRadius: '30px',
+                    transition: 'left 0.3s ease',
+                    zIndex: 0
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '0',
+                    width: '50%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1
+                  }}
+                >
+                  <span
+                    style={{
+                      color: selectedTeam === 'away' ? 'white' : '#666',
+                      fontWeight: selectedTeam === 'away' ? 700 : 500,
+                      fontSize: '1.1rem',
+                      userSelect: 'none',
+                      pointerEvents: 'none',
+                      transition: 'color 0.3s ease, font-weight 0.3s ease'
+                    }}
+                  >
+                    {data.team1Name}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: '0',
+                    width: '50%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1
+                  }}
+                >
+                  <span
+                    style={{
+                      color: selectedTeam === 'home' ? 'white' : '#666',
+                      fontWeight: selectedTeam === 'home' ? 700 : 500,
+                      fontSize: '1.1rem',
+                      userSelect: 'none',
+                      pointerEvents: 'none',
+                      transition: 'color 0.3s ease, font-weight 0.3s ease'
+                    }}
+                  >
+                    {data.team2Name}
+                  </span>
+                </div>
+              </div>
+            </div>
             <BlindPlayerSelector
               team1Name={data.team1Name}
               team2Name={data.team2Name}
@@ -639,6 +732,7 @@ function App() {
               selectedMatches={selectedMatches}
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
+              selectedTeam={selectedTeam}
             />
           </>
         )}
