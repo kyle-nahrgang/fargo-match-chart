@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MatchupGrid from './components/MatchupGrid';
 import OptimalLineups from './components/OptimalLineups';
 import BlindPlayerSelector from './components/BlindPlayerSelector';
+import PredictedMatchups from './components/PredictedMatchups';
 
 const DEFAULT_DIVISION_ID = 'c3012308-61dc-4ca5-b304-b3a00150a4f9';
 
@@ -759,6 +760,16 @@ function App() {
                 }
                 return null;
               })()}
+            />
+            <PredictedMatchups
+              team1Name={data.team1Name}
+              team2Name={data.team2Name}
+              team1Players={data.team1Players}
+              team2Players={data.team2Players}
+              matchupData={data.matchupData}
+              selectedMatches={selectedMatches}
+              availableTeam1Players={availableTeam1Players}
+              availableTeam2Players={availableTeam2Players}
             />
           </>
         )}

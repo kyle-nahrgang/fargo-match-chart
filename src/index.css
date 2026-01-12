@@ -268,6 +268,203 @@ code {
   text-align: center;
 }
 
+.predicted-matchups-container {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.predicted-matchups-container h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.prediction-explanation {
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #fff3e0;
+  border-left: 4px solid #ff9800;
+  border-radius: 4px;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.prediction-summary {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #4caf50;
+}
+
+.summary-header {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.summary-team {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-team-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.summary-team-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.stat-label {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.stat-value {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.no-predictions {
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+.predicted-matchups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.predicted-matchup-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #ff9800;
+}
+
+.predicted-matchup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.match-number {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.blind-indicator {
+  font-size: 0.9rem;
+  color: #666;
+  background-color: #fff3e0;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.predicted-matchup-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.predicted-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+}
+
+.predicted-player.match-won {
+  background-color: #e8f5e9;
+  border-left: 3px solid #4caf50;
+}
+
+.predicted-player .player-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.predicted-player .player-rating {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.predicted-player .win-prob {
+  margin-left: auto;
+  font-weight: 600;
+  color: #666;
+}
+
+.predicted-player .win-prob.match-won {
+  color: #4caf50;
+}
+
+.vs-divider {
+  text-align: center;
+  font-weight: 600;
+  color: #999;
+  padding: 5px 0;
+}
+
+.race-info {
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+  padding-top: 5px;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 5px;
+}
+
+.predicted-player.blind-pick {
+  border-left: 3px solid #ff9800;
+  background-color: #fff3e0;
+}
+
+.blind-badge {
+  color: #ff9800;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
 .blind-players-columns {
   display: grid;
   grid-template-columns: 1fr;
