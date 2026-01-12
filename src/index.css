@@ -243,6 +243,7 @@ code {
   background-color: #f5f5f5;
   border-radius: 8px;
   transition: background-color 0.2s ease;
+  color: #333;
 }
 
 .collapsible-header:hover {
@@ -273,6 +274,31 @@ code {
   gap: 30px;
   margin-top: 20px;
   max-width: 100%;
+}
+
+.match-recommendations-container {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.no-recommendations {
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+.recommendation-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.recommendation-card.match-won {
+  border-left-color: #4caf50 !important;
 }
 
 .blind-players-column h3 {

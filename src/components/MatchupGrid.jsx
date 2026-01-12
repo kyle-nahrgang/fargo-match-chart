@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,12 +9,19 @@ import { extractProbability, combinations, permutations } from '../utils';
 
 const columnHelper = createColumnHelper();
 
-function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1Players = new Set(), availableTeam2Players = new Set() }) {
+function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1Players = new Set(), availableTeam2Players = new Set(), onHighlightChange }) {
   const { team1Name, team2Name, team1Players, team2Players, matchupData } = data;
   const maxPoints = 1900;
   const numMatches = 4;
   const [highlightedRow, setHighlightedRow] = useState(null);
   const [highlightedColumn, setHighlightedColumn] = useState(null);
+
+  // Notify parent when highlight changes
+  useEffect(() => {
+    if (onHighlightChange) {
+      onHighlightChange(highlightedRow, highlightedColumn);
+    }
+  }, [highlightedRow, highlightedColumn, onHighlightChange]);
 
   const formatOdds = (odds, inverse = false) => {
     const prob = extractProbability(odds);

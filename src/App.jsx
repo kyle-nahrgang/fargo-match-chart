@@ -191,6 +191,8 @@ function App() {
   const [availableTeam1Players, setAvailableTeam1Players] = useState(new Set());
   const [availableTeam2Players, setAvailableTeam2Players] = useState(new Set());
   const [selectedTeam, setSelectedTeam] = useState('home'); // 'home' or 'away'
+  const [highlightedRow, setHighlightedRow] = useState(null); // team1 player index
+  const [highlightedColumn, setHighlightedColumn] = useState(null); // team2 player index
 
   // Fetch divisions and extract divisionId and matchId from URL parameters, or use defaults
   useEffect(() => {
@@ -635,6 +637,10 @@ function App() {
               }}
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
+              onHighlightChange={(row, column) => {
+                setHighlightedRow(row);
+                setHighlightedColumn(column);
+              }}
             />
             <div className="team-selector-container" style={{ marginBottom: '30px', marginTop: '30px', padding: '20px 0', display: 'flex', justifyContent: 'center', width: '100%' }}>
               <div
@@ -733,6 +739,26 @@ function App() {
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
               selectedTeam={selectedTeam}
+              lockedOpponentTeam1Index={(() => {
+                // If team1 (away) player is highlighted and selectedTeam is 'home' (team2),
+                // and no match is selected for that player, lock that opponent
+                const hasTeam1PlayerSelectedMatch = highlightedRow !== null &&
+                  selectedMatches.some(m => m.team1Index === highlightedRow);
+                if (highlightedRow !== null && selectedTeam === 'home' && !hasTeam1PlayerSelectedMatch) {
+                  return highlightedRow;
+                }
+                return null;
+              })()}
+              lockedOpponentTeam2Index={(() => {
+                // If team2 (home) player is highlighted and selectedTeam is 'away' (team1),
+                // and no match is selected for that player, lock that opponent
+                const hasTeam2PlayerSelectedMatch = highlightedColumn !== null &&
+                  selectedMatches.some(m => m.team2Index === highlightedColumn);
+                if (highlightedColumn !== null && selectedTeam === 'away' && !hasTeam2PlayerSelectedMatch) {
+                  return highlightedColumn;
+                }
+                return null;
+              })()}
             />
           </>
         )}

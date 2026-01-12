@@ -181,7 +181,9 @@ function BlindPlayerSelector({
   selectedMatches = [],
   availableTeam1Players = new Set(),
   availableTeam2Players = new Set(),
-  selectedTeam = 'home' // 'home' or 'away'
+  selectedTeam = 'home', // 'home' or 'away'
+  lockedOpponentTeam1Index = null, // If set, assume this team1 player will be the opponent
+  lockedOpponentTeam2Index = null  // If set, assume this team2 player will be the opponent
 }) {
 
   /**
@@ -454,10 +456,12 @@ function BlindPlayerSelector({
         // This simulates what the opponent would do in response to our blind pick
         //
         // COUNTER-PICK LOGIC:
-        // 1. First, look for players with >= 60% win probability (from counter team's perspective)
-        //    Among these, pick the LOWEST-RATED player (to save points for other matches)
-        // 2. If no player meets the 60% threshold, fall back to the best counter-pick available
-        //    (highest win prob for counter team, which is worst for blind team)
+        // 1. If a locked opponent is specified, use that player as the counter-pick
+        // 2. Otherwise, find the optimal counter-pick:
+        //    a. First, look for players with >= 60% win probability (from counter team's perspective)
+        //       Among these, pick the LOWEST-RATED player (to save points for other matches)
+        //    b. If no player meets the 60% threshold, fall back to the best counter-pick available
+        //       (highest win prob for counter team, which is worst for blind team)
         //
         // This represents the "worst case" scenario - we assume optimal opponent play
         let counterPick = null;              // Best counter-pick meeting threshold
@@ -468,8 +472,31 @@ function BlindPlayerSelector({
         // Team 2 worst case: opponent has 0% win prob (blind team has 100%)
         let bestFallbackWinProb = teamNumber === 1 ? 1.0 : 0.0;
 
-        // Evaluate all potential counter-picks
-        for (const counterPlayer of counterPlayers) {
+        // Check if there's a locked opponent
+        const lockedOpponentIndex = teamNumber === 1 ? lockedOpponentTeam2Index : lockedOpponentTeam1Index;
+        if (lockedOpponentIndex !== null && lockedOpponentIndex !== undefined) {
+          // Find the locked opponent in the counter players list
+          const lockedOpponent = counterPlayers.find(p => p.index === lockedOpponentIndex);
+          if (lockedOpponent && lockedOpponent.rating <= remainingCounterPoints) {
+            // Get matchup data for the locked opponent
+            const matchup = teamNumber === 1
+              ? matchupData[blindPlayerIndex]?.[lockedOpponentIndex]
+              : matchupData[lockedOpponentIndex]?.[blindPlayerIndex];
+
+            if (matchup && matchup.race) {
+              const prob = extractProbability(matchup.odds);
+              if (prob !== null) {
+                // Use the locked opponent as the counter-pick
+                counterPick = lockedOpponent;
+                counterPickWinProb = teamNumber === 1 ? prob : (1 - prob);
+              }
+            }
+          }
+        }
+
+        // If no locked opponent was used, evaluate all potential counter-picks
+        if (counterPick === null) {
+          for (const counterPlayer of counterPlayers) {
           const counterPlayerIndex = counterPlayer.index;
           const counterPlayerRating = counterPlayer.rating;
 
@@ -529,6 +556,7 @@ function BlindPlayerSelector({
               bestFallbackWinProb = prob;
               bestFallbackPick = counterPlayer;
             }
+          }
           }
         }
 
@@ -658,7 +686,7 @@ function BlindPlayerSelector({
         return b.flexibilityScore - a.flexibilityScore;
       });
     };
-  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players]);
+  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players, lockedOpponentTeam1Index, lockedOpponentTeam2Index]);
 
   if (!team1Players || !team2Players || !matchupData) {
     return (
