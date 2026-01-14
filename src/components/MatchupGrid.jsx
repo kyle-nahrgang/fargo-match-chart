@@ -365,18 +365,16 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
       }),
     ];
 
-    // Add a column for each available team 2 player
+    // Add a column for each team 2 player (mark unavailable ones as hidden)
     team2Players.forEach((player, index) => {
-      // Skip if player is not available
-      if (!availableTeam2Players.has(index)) {
-        return;
-      }
+      const isHidden = !availableTeam2Players.has(index);
       const playerDisabled = isPlayerDisabled(index, false);
 
       cols.push(
         columnHelper.accessor(`matchup_${index}`, {
           meta: {
             playerIndex: index, // Store original player index for highlighting
+            hidden: isHidden,
           },
           header: () => {
             const isHighlighted = highlightedColumn === index;
@@ -441,14 +439,14 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
     return cols;
   }, [team1Players, team2Players, matchupData, selectedMatches, highlightedRow, highlightedColumn, availableTeam1Players, availableTeam2Players]);
 
-  // Create table data - only include available team 1 players
+  // Create table data - include all team 1 players, mark unavailable ones as hidden
   const tableData = useMemo(() => {
     return team1Players
       .map((_, index) => ({
         id: index,
         player: team1Players[index],
-      }))
-      .filter((row) => availableTeam1Players.has(row.id));
+        hidden: !availableTeam1Players.has(index),
+      }));
   }, [team1Players, availableTeam1Players]);
 
   const table = useReactTable({
@@ -469,6 +467,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
                   // Extract original player index from column meta (for team 2 columns)
                   const colIndex = headerIndex > 0 ? (header.column.columnDef.meta?.playerIndex ?? null) : null;
                   const isColHighlighted = colIndex !== null && highlightedColumn === colIndex;
+                  const isHidden = header.column.columnDef.meta?.hidden === true;
                   return (
                     <th
                       key={header.id}
@@ -476,6 +475,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
                       style={{
                         width: header.getSize(),
                         minWidth: header.getSize(),
+                        display: isHidden ? 'none' : undefined,
                       }}
                     >
                       {header.isPlaceholder
@@ -494,12 +494,18 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
             {table.getRowModel().rows.map((row) => {
               const rowIndex = parseInt(row.id);
               const isRowHighlighted = highlightedRow === rowIndex;
+              const isHidden = row.original.hidden;
               return (
-                <tr key={row.id} className={isRowHighlighted ? 'highlighted-row' : ''}>
+                <tr
+                  key={row.id}
+                  className={isRowHighlighted ? 'highlighted-row' : ''}
+                  style={{ display: isHidden ? 'none' : undefined }}
+                >
                   {row.getVisibleCells().map((cell, cellIndex) => {
                     // Extract original player index from column meta (for team 2 columns)
                     const colIndex = cellIndex > 0 ? (cell.column.columnDef.meta?.playerIndex ?? null) : null;
                     const isColHighlighted = colIndex !== null && highlightedColumn === colIndex;
+                    const isHidden = cell.column.columnDef.meta?.hidden === true;
                     return (
                       <td
                         key={cell.id}
@@ -507,6 +513,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
                         style={{
                           width: cell.column.getSize(),
                           minWidth: cell.column.getSize(),
+                          display: isHidden ? 'none' : undefined,
                         }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -391,9 +391,9 @@ function PredictedMatchups({
     let currentUsedTeam2Indices = new Set(selectedTeam2Indices);
 
     const predicted = [];
-    // Home team ALWAYS throws blind first, then alternating
-    // Pattern: Home → Away → Home → Away
-    let currentBlindTeam = 2; // Always start with home team (team2)
+    // Away team ALWAYS throws blind first, then alternating
+    // Pattern: Away → Home → Away → Home
+    let currentBlindTeam = 1; // Always start with away team (team1)
 
     // Predict matches until we have 4 total (including selected matches)
     for (let i = 0; i < remainingMatches; i++) {
@@ -495,7 +495,7 @@ function PredictedMatchups({
       {!isCollapsed && (
         <>
           <p className="prediction-explanation">
-            Predicted sequence of matchups assuming alternating blind picks. Home team ALWAYS throws blind first, then Away team, then alternating (Home → Away → Home → Away).
+            Predicted sequence of matchups assuming alternating blind picks. Away team ALWAYS throws blind first, then Home team, then alternating (Away → Home → Away → Home).
             Each team selects the player that maximizes their overall night outcome, considering optimal counter-picks.
           </p>
           {predictedMatchups && predictedMatchups.length > 0 && (() => {
