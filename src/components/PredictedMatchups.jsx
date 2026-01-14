@@ -393,7 +393,9 @@ function PredictedMatchups({
     const predicted = [];
     // Away team ALWAYS throws blind first, then alternating
     // Pattern: Away → Home → Away → Home
-    let currentBlindTeam = 1; // Always start with away team (team1)
+    // Determine which team should pick next based on how many matches are already selected
+    // Match 1: Team 1 (away), Match 2: Team 2 (home), Match 3: Team 1 (away), Match 4: Team 2 (home)
+    let currentBlindTeam = (selectedMatches.length % 2 === 0) ? 1 : 2;
 
     // Predict matches until we have 4 total (including selected matches)
     for (let i = 0; i < remainingMatches; i++) {
