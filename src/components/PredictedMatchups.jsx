@@ -458,7 +458,8 @@ function PredictedMatchups({
     );
   }
 
-  if (!predictedMatchups || predictedMatchups.length === 0) {
+  // Only show "no predictions" message if there are no selected matches AND no predicted matches
+  if ((!predictedMatchups || predictedMatchups.length === 0) && (!selectedMatches || selectedMatches.length === 0)) {
     return (
       <div className="predicted-matchups-container">
         <h2
@@ -473,7 +474,7 @@ function PredictedMatchups({
         </h2>
         {!isCollapsed && (
           <p className="no-predictions">
-            Unable to predict matchups. All matches may be selected, or no valid picks are available.
+            Unable to predict matchups. No valid picks are available.
           </p>
         )}
       </div>
@@ -498,7 +499,7 @@ function PredictedMatchups({
             Predicted sequence of matchups assuming alternating blind picks. Away team ALWAYS throws blind first, then Home team, then alternating (Away → Home → Away → Home).
             Each team selects the player that maximizes their overall night outcome, considering optimal counter-picks.
           </p>
-          {predictedMatchups && predictedMatchups.length > 0 && (() => {
+          {((predictedMatchups && predictedMatchups.length > 0) || (selectedMatches && selectedMatches.length > 0)) && (() => {
             // Calculate win probabilities for selected matches
             let selectedTeam1WinProb = 0;
             let selectedTeam2WinProb = 0;
@@ -519,10 +520,10 @@ function PredictedMatchups({
             });
 
             // Calculate overall expectations (selected + predicted)
-            const team1TotalWinProb = selectedTeam1WinProb + predictedMatchups.reduce((sum, m) => sum + m.team1WinProb, 0);
-            const team2TotalWinProb = selectedTeam2WinProb + predictedMatchups.reduce((sum, m) => sum + m.team2WinProb, 0);
-            const team1ExpectedWins = selectedTeam1Wins + predictedMatchups.filter(m => m.team1WinProb > 0.5).length;
-            const team2ExpectedWins = selectedTeam2Wins + predictedMatchups.filter(m => m.team2WinProb > 0.5).length;
+            const team1TotalWinProb = selectedTeam1WinProb + (predictedMatchups ? predictedMatchups.reduce((sum, m) => sum + m.team1WinProb, 0) : 0);
+            const team2TotalWinProb = selectedTeam2WinProb + (predictedMatchups ? predictedMatchups.reduce((sum, m) => sum + m.team2WinProb, 0) : 0);
+            const team1ExpectedWins = selectedTeam1Wins + (predictedMatchups ? predictedMatchups.filter(m => m.team1WinProb > 0.5).length : 0);
+            const team2ExpectedWins = selectedTeam2Wins + (predictedMatchups ? predictedMatchups.filter(m => m.team2WinProb > 0.5).length : 0);
             const totalMatches = numMatches;
             const team1AvgWinProb = team1TotalWinProb / numMatches;
             const team2AvgWinProb = team2TotalWinProb / numMatches;
@@ -570,11 +571,59 @@ function PredictedMatchups({
             );
           })()}
           <div className="predicted-matchups-list">
+            {/* Show selected matches first, in order of selection */}
+            {selectedMatches.map((match, idx) => {
+              const matchup = matchupData[match.team1Index]?.[match.team2Index];
+              if (!matchup || !matchup.race) {
+                return null;
+              }
+              const prob = extractProbability(matchup.odds);
+              if (prob === null) {
+                return null;
+              }
+              const team1WinProb = prob;
+              const team2WinProb = 1 - prob;
+              const isTeam1Won = team1WinProb > 0.5;
+              const isTeam2Won = team2WinProb > 0.5;
+              const team1Player = team1Players[match.team1Index];
+              const team2Player = team2Players[match.team2Index];
+
+              return (
+                <div key={`selected-${idx}`} className="predicted-matchup-card selected-match">
+                  <div className="predicted-matchup-header">
+                    <span className="match-number">Match {idx + 1} (Selected)</span>
+                  </div>
+                  <div className="predicted-matchup-details">
+                    <div className={`predicted-player ${isTeam1Won ? 'match-won' : ''}`}>
+                      <span className="player-name">
+                        {team1Player.name}
+                      </span>
+                      <span className="player-rating">({team1Player.rating})</span>
+                      <span className={`win-prob ${isTeam1Won ? 'match-won' : ''}`}>
+                        {(team1WinProb * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="vs-divider">vs</div>
+                    <div className={`predicted-player ${isTeam2Won ? 'match-won' : ''}`}>
+                      <span className="player-name">
+                        {team2Player.name}
+                      </span>
+                      <span className="player-rating">({team2Player.rating})</span>
+                      <span className={`win-prob ${isTeam2Won ? 'match-won' : ''}`}>
+                        {(team2WinProb * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="race-info">Race: {matchup.race}</div>
+                  </div>
+                </div>
+              );
+            })}
+            {/* Then show predicted matches */}
             {predictedMatchups.map((matchup, idx) => {
               const isTeam1Won = matchup.team1WinProb > 0.5;
               const isTeam2Won = matchup.team2WinProb > 0.5;
               return (
-                <div key={idx} className="predicted-matchup-card">
+                <div key={`predicted-${idx}`} className="predicted-matchup-card">
                   <div className="predicted-matchup-header">
                     <span className="match-number">Match {matchup.matchNumber}</span>
                   </div>

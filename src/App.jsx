@@ -3,6 +3,7 @@ import MatchupGrid from './components/MatchupGrid';
 import OptimalLineups from './components/OptimalLineups';
 import BlindPlayerSelector from './components/BlindPlayerSelector';
 import PredictedMatchups from './components/PredictedMatchups';
+import RosterList from './components/RosterList';
 
 const DEFAULT_DIVISION_ID = 'c3012308-61dc-4ca5-b304-b3a00150a4f9';
 
@@ -564,70 +565,34 @@ function App() {
         {data && (
           <>
             <div className="player-availability-container">
-              <div className="availability-section">
-                <h3 className="availability-title">{data.team1Name} - Available Players</h3>
-                <div className="availability-checkboxes">
-                  {data.team1Players.map((player, index) => (
-                    <label key={index} className="availability-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={availableTeam1Players.has(index)}
-                        onChange={(e) => {
-                          const newSet = new Set(availableTeam1Players);
-                          if (e.target.checked) {
-                            newSet.add(index);
-                          } else {
-                            newSet.delete(index);
-                            // Clear any selected matches involving this player
-                            setSelectedMatches(prev => {
-                              const filtered = prev.filter(m => m.team1Index !== index);
-                              saveToCache(matchId, 'selectedMatches', filtered);
-                              return filtered;
-                            });
-                          }
-                          setAvailableTeam1Players(newSet);
-                          saveToCache(matchId, 'availableTeam1Players', newSet);
-                        }}
-                      />
-                      <span className="checkbox-label">
-                        {player.name} <span className="rating-text">({player.rating})</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="availability-section">
-                <h3 className="availability-title">{data.team2Name} - Available Players</h3>
-                <div className="availability-checkboxes">
-                  {data.team2Players.map((player, index) => (
-                    <label key={index} className="availability-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={availableTeam2Players.has(index)}
-                        onChange={(e) => {
-                          const newSet = new Set(availableTeam2Players);
-                          if (e.target.checked) {
-                            newSet.add(index);
-                          } else {
-                            newSet.delete(index);
-                            // Clear any selected matches involving this player
-                            setSelectedMatches(prev => {
-                              const filtered = prev.filter(m => m.team2Index !== index);
-                              saveToCache(matchId, 'selectedMatches', filtered);
-                              return filtered;
-                            });
-                          }
-                          setAvailableTeam2Players(newSet);
-                          saveToCache(matchId, 'availableTeam2Players', newSet);
-                        }}
-                      />
-                      <span className="checkbox-label">
-                        {player.name} <span className="rating-text">({player.rating})</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <RosterList
+                teamName={data.team1Name}
+                players={data.team1Players}
+                availablePlayers={availableTeam1Players}
+                onAvailabilityChange={(newSet) => setAvailableTeam1Players(newSet)}
+                matchId={matchId}
+                selectedMatches={selectedMatches}
+                teamType="team1"
+                saveToCache={saveToCache}
+                onSelectedMatchesChange={(filtered) => {
+                  setSelectedMatches(filtered);
+                  saveToCache(matchId, 'selectedMatches', filtered);
+                }}
+              />
+              <RosterList
+                teamName={data.team2Name}
+                players={data.team2Players}
+                availablePlayers={availableTeam2Players}
+                onAvailabilityChange={(newSet) => setAvailableTeam2Players(newSet)}
+                matchId={matchId}
+                selectedMatches={selectedMatches}
+                teamType="team2"
+                saveToCache={saveToCache}
+                onSelectedMatchesChange={(filtered) => {
+                  setSelectedMatches(filtered);
+                  saveToCache(matchId, 'selectedMatches', filtered);
+                }}
+              />
             </div>
             <MatchupGrid
               data={data}
