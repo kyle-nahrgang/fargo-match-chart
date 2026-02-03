@@ -271,9 +271,12 @@ function App() {
         }
       }
     } catch (err) {
-      // Check if it's a CORS error
-      if (err.message.includes('CORS') || err.message.includes('Access-Control')) {
-        setError('CORS error: The division schedule API does not allow direct browser access. Please use a backend proxy or CORS proxy.');
+      // Check if it's a direct CORS error (not a proxy failure)
+      // We check for specific CORS-related error patterns, but not generic proxy failures
+      const errorMsg = err.message || '';
+      if ((errorMsg.includes('CORS') || errorMsg.includes('Access-Control')) &&
+          !errorMsg.includes('proxy') && !errorMsg.includes('Proxy')) {
+        setError('CORS error: The division schedule API does not allow direct browser access. The app is using CORS proxies, but they may have failed. Please check the console for details.');
       } else {
         setError(err.message);
       }

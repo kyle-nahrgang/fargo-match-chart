@@ -125,7 +125,17 @@ export async function getDivisionSchedule(divisionId) {
 
       // Check if response is valid
       if (response.status >= 200 && response.status < 300) {
-        const html = response.data;
+        let html = response.data;
+
+        // Handle case where AllOrigins or other proxies wrap response in JSON
+        if (typeof html === 'object' && html.contents) {
+          html = html.contents;
+        }
+
+        // Ensure html is a string
+        if (typeof html !== 'string') {
+          html = String(html);
+        }
 
         // Check if we got an error page instead of schedule HTML
         if (typeof html === 'string' && (html.includes('<!DOCTYPE') && html.includes('error'))) {
@@ -182,32 +192,53 @@ export async function getDivisionSchedule(divisionId) {
   };
 
   // Try multiple CORS proxies in order until one works
+  // Note: We need proxies that support POST requests with form data
   const proxies = [
-    // Proxy 1: AllOrigins (reliable, free, supports POST)
+    // Proxy 1: CORS Anywhere (upgraded service, supports POST)
     async () => {
-      return tryProxy('allorigins', async () => {
-        // AllOrigins POST endpoint: send url and method in body, actual POST data in 'body' field
-        const formData = new URLSearchParams({ divisionId });
-        const response = await axios.post('https://api.allorigins.win/post',
-          new URLSearchParams({
-            url: targetUrl,
-            method: 'POST',
-            body: formData.toString(),
-            contentType: 'application/x-www-form-urlencoded'
-          }),
-          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      return tryProxy('cors-anywhere', async () => {
+        return axios.post(`https://cors-anywhere.com/${targetUrl}`,
+          new URLSearchParams({ divisionId }),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            timeout: 15000 // 15 second timeout
+          }
         );
-        // AllOrigins wraps the response in JSON with 'contents' field
-        if (response.data && response.data.contents) {
-          return { ...response, data: response.data.contents };
-        }
-        return response;
       });
     },
 
-    // Proxy 2: CORS Anywhere (community hosted, may require temporary access)
+    // Proxy 2: CorsProxy.org (free, supports POST, Cloudflare CDN)
     async () => {
-      return tryProxy('cors-anywhere', async () => {
+      return tryProxy('corsproxy-org', async () => {
+        return axios.post(`https://corsproxy.org/?${encodeURIComponent(targetUrl)}`,
+          new URLSearchParams({ divisionId }),
+          {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 15000
+          }
+        );
+      });
+    },
+
+    // Proxy 3: corsproxy.io (may have 403 issues but worth trying)
+    async () => {
+      return tryProxy('corsproxy-io', async () => {
+        return axios.post('https://corsproxy.io/?' + encodeURIComponent(targetUrl),
+          new URLSearchParams({ divisionId }),
+          {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 15000
+          }
+        );
+      });
+    },
+
+    // Proxy 4: CORS Anywhere Heroku (fallback, may require opt-in)
+    async () => {
+      return tryProxy('cors-anywhere-heroku', async () => {
         return axios.post(`https://cors-anywhere.herokuapp.com/${targetUrl}`,
           new URLSearchParams({ divisionId }),
           {
@@ -215,20 +246,7 @@ export async function getDivisionSchedule(divisionId) {
               'Content-Type': 'application/x-www-form-urlencoded',
               'X-Requested-With': 'XMLHttpRequest'
             },
-            timeout: 10000 // 10 second timeout
-          }
-        );
-      });
-    },
-
-    // Proxy 3: corsproxy.io (original, may have 403 issues but worth trying)
-    async () => {
-      return tryProxy('corsproxy', async () => {
-        return axios.post('https://corsproxy.io/?' + encodeURIComponent(targetUrl),
-          new URLSearchParams({ divisionId }),
-          {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            timeout: 10000
+            timeout: 15000
           }
         );
       });
@@ -237,34 +255,57 @@ export async function getDivisionSchedule(divisionId) {
 
   // Try each proxy until one succeeds
   let lastError = null;
+  let proxyAttempts = [];
   for (const proxyFn of proxies) {
     try {
-      return await proxyFn();
+      const result = await proxyFn();
+      console.log(`Successfully fetched division schedule using proxy`);
+      return result;
     } catch (error) {
+      const errorInfo = {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        code: error.code
+      };
+      proxyAttempts.push(errorInfo);
+      console.warn(`Proxy attempt failed:`, errorInfo);
       lastError = error;
       // Continue to next proxy
       continue;
     }
   }
 
+  // Log all failed attempts for debugging
+  console.error('All proxy attempts failed:', proxyAttempts);
+
   // All proxies failed - provide helpful error message
+  // Note: We avoid using "CORS" in the error message to prevent App.jsx from showing generic CORS error
   if (lastError) {
     if (lastError.response) {
       const status = lastError.response.status;
       const statusText = lastError.response.statusText;
       throw new Error(
-        `Failed to fetch division schedule: All CORS proxies failed. ` +
+        `Failed to fetch division schedule: All proxy services failed. ` +
         `Last error: ${status} ${statusText}. ` +
-        `This may be due to CORS proxy limitations or the target server blocking requests. ` +
+        `This may be due to proxy service limitations or the target server blocking requests. ` +
         `Consider deploying with a backend server instead of static hosting.`
       );
     } else if (lastError.request) {
       throw new Error(
-        'Failed to fetch division schedule: No response from server after trying all proxies. ' +
-        'The CORS proxies may be temporarily unavailable.'
+        'Failed to fetch division schedule: No response from server after trying all proxy services. ' +
+        'The proxy services may be temporarily unavailable.'
       );
     } else {
-      throw new Error(`Failed to fetch division schedule: ${lastError.message}`);
+      // Check if it's actually a CORS error (network error with no response)
+      const errorMsg = lastError.message || String(lastError);
+      if (errorMsg.includes('Network Error') || errorMsg.includes('Failed to fetch')) {
+        throw new Error(
+          `Failed to fetch division schedule: Network error. ` +
+          `All proxy services failed. This may indicate a connectivity issue or that the target server is blocking proxy requests.`
+        );
+      }
+      throw new Error(`Failed to fetch division schedule: ${errorMsg}`);
     }
   }
 
