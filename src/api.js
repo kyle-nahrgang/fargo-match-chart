@@ -116,82 +116,159 @@ export function getPlayerRating(player) {
  * Uses a CORS proxy for GitHub Pages deployment since the API blocks direct browser requests
  */
 export async function getDivisionSchedule(divisionId) {
-  try {
-    // For GitHub Pages (static hosting), we need to use a CORS proxy
-    // Using corsproxy.io which supports POST requests
-    const targetUrl = 'https://lms.fargorate.com/PublicReport/GenerateDivisionScheduleReport';
-    const corsProxy = 'https://corsproxy.io/?';
-    const proxiedUrl = corsProxy + encodeURIComponent(targetUrl);
+  const targetUrl = 'https://lms.fargorate.com/PublicReport/GenerateDivisionScheduleReport';
 
-    const response = await axios.post(proxiedUrl,
-      new URLSearchParams({ divisionId }),
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        // Some CORS proxies need this
-        withCredentials: false
+  // Helper function to try a proxy and parse the response
+  const tryProxy = async (proxyName, makeRequest) => {
+    try {
+      const response = await makeRequest();
+
+      // Check if response is valid
+      if (response.status >= 200 && response.status < 300) {
+        const html = response.data;
+
+        // Check if we got an error page instead of schedule HTML
+        if (typeof html === 'string' && (html.includes('<!DOCTYPE') && html.includes('error'))) {
+          throw new Error('Failed to fetch division schedule: Server returned an error page');
+        }
+
+        // Parse HTML to extract matches
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const matchBlocks = doc.querySelectorAll('.schedule-team-block[data-url]');
+
+        const matches = [];
+        let currentDate = null;
+
+        matchBlocks.forEach((block) => {
+          const url = block.getAttribute('data-url');
+          const matchIdMatch = url.match(/matchId=([^&]+)/);
+          if (!matchIdMatch) return;
+
+          const matchId = matchIdMatch[1];
+          const teamElements = block.querySelectorAll('.schedule-team');
+          const locationElement = block.querySelector('.schedule-location');
+
+          // Check if there's a date header before this match (traverse backwards past hr tags)
+          let prevElement = block.previousElementSibling;
+          while (prevElement) {
+            if (prevElement.classList && prevElement.classList.contains('schedule-date')) {
+              currentDate = prevElement.textContent.trim();
+              break;
+            }
+            prevElement = prevElement.previousElementSibling;
+          }
+
+          const team1 = teamElements[0]?.textContent.trim() || '';
+          const team2 = teamElements[1]?.textContent.trim() || '';
+          const location = locationElement?.textContent.trim() || '';
+
+          matches.push({
+            matchId,
+            team1,
+            team2,
+            location,
+            date: currentDate
+          });
+        });
+
+        return matches;
       }
-    );
-
-    // Parse HTML to extract matches
-    const html = response.data;
-
-    // Check if we got an error page instead of schedule HTML
-    if (typeof html === 'string' && (html.includes('<!DOCTYPE') && html.includes('error'))) {
-      throw new Error('Failed to fetch division schedule: Server returned an error page');
-    }
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const matchBlocks = doc.querySelectorAll('.schedule-team-block[data-url]');
-
-  const matches = [];
-  let currentDate = null;
-
-  matchBlocks.forEach((block) => {
-    const url = block.getAttribute('data-url');
-    const matchIdMatch = url.match(/matchId=([^&]+)/);
-    if (!matchIdMatch) return;
-
-    const matchId = matchIdMatch[1];
-    const teamElements = block.querySelectorAll('.schedule-team');
-    const locationElement = block.querySelector('.schedule-location');
-
-    // Check if there's a date header before this match (traverse backwards past hr tags)
-    let prevElement = block.previousElementSibling;
-    while (prevElement) {
-      if (prevElement.classList && prevElement.classList.contains('schedule-date')) {
-        currentDate = prevElement.textContent.trim();
-        break;
-      }
-      prevElement = prevElement.previousElementSibling;
-    }
-
-    const team1 = teamElements[0]?.textContent.trim() || '';
-    const team2 = teamElements[1]?.textContent.trim() || '';
-    const location = locationElement?.textContent.trim() || '';
-
-    matches.push({
-      matchId,
-      team1,
-      team2,
-      location,
-      date: currentDate
-    });
-  });
-
-    return matches;
-  } catch (error) {
-    if (error.response) {
-      // Server responded with error status
-      throw new Error(`Failed to fetch division schedule: ${error.response.status} ${error.response.statusText}`);
-    } else if (error.request) {
-      // Request made but no response
-      throw new Error('Failed to fetch division schedule: No response from server');
-    } else {
-      // Something else happened (including our custom error)
+      throw new Error(`Invalid response status: ${response.status}`);
+    } catch (error) {
+      console.warn(`CORS proxy ${proxyName} failed:`, error.message);
       throw error;
     }
+  };
+
+  // Try multiple CORS proxies in order until one works
+  const proxies = [
+    // Proxy 1: AllOrigins (reliable, free, supports POST)
+    async () => {
+      return tryProxy('allorigins', async () => {
+        // AllOrigins POST endpoint: send url and method in body, actual POST data in 'body' field
+        const formData = new URLSearchParams({ divisionId });
+        const response = await axios.post('https://api.allorigins.win/post',
+          new URLSearchParams({
+            url: targetUrl,
+            method: 'POST',
+            body: formData.toString(),
+            contentType: 'application/x-www-form-urlencoded'
+          }),
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+        // AllOrigins wraps the response in JSON with 'contents' field
+        if (response.data && response.data.contents) {
+          return { ...response, data: response.data.contents };
+        }
+        return response;
+      });
+    },
+
+    // Proxy 2: CORS Anywhere (community hosted, may require temporary access)
+    async () => {
+      return tryProxy('cors-anywhere', async () => {
+        return axios.post(`https://cors-anywhere.herokuapp.com/${targetUrl}`,
+          new URLSearchParams({ divisionId }),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            timeout: 10000 // 10 second timeout
+          }
+        );
+      });
+    },
+
+    // Proxy 3: corsproxy.io (original, may have 403 issues but worth trying)
+    async () => {
+      return tryProxy('corsproxy', async () => {
+        return axios.post('https://corsproxy.io/?' + encodeURIComponent(targetUrl),
+          new URLSearchParams({ divisionId }),
+          {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 10000
+          }
+        );
+      });
+    }
+  ];
+
+  // Try each proxy until one succeeds
+  let lastError = null;
+  for (const proxyFn of proxies) {
+    try {
+      return await proxyFn();
+    } catch (error) {
+      lastError = error;
+      // Continue to next proxy
+      continue;
+    }
   }
+
+  // All proxies failed - provide helpful error message
+  if (lastError) {
+    if (lastError.response) {
+      const status = lastError.response.status;
+      const statusText = lastError.response.statusText;
+      throw new Error(
+        `Failed to fetch division schedule: All CORS proxies failed. ` +
+        `Last error: ${status} ${statusText}. ` +
+        `This may be due to CORS proxy limitations or the target server blocking requests. ` +
+        `Consider deploying with a backend server instead of static hosting.`
+      );
+    } else if (lastError.request) {
+      throw new Error(
+        'Failed to fetch division schedule: No response from server after trying all proxies. ' +
+        'The CORS proxies may be temporarily unavailable.'
+      );
+    } else {
+      throw new Error(`Failed to fetch division schedule: ${lastError.message}`);
+    }
+  }
+
+  throw new Error('Failed to fetch division schedule: Unknown error');
 }
 
 /**
