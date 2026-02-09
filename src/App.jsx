@@ -637,7 +637,7 @@ function App() {
                 <div
                   style={{
                     position: 'absolute',
-                    left: selectedTeam === 'home' ? '50%' : '0',
+                    left: selectedTeam === 'home' ? '0' : '50%',
                     width: '50%',
                     height: '100%',
                     backgroundColor: selectedTeam === 'home' ? '#667eea' : '#764ba2',
@@ -660,8 +660,8 @@ function App() {
                 >
                   <span
                     style={{
-                      color: selectedTeam === 'away' ? 'white' : '#666',
-                      fontWeight: selectedTeam === 'away' ? 700 : 500,
+                      color: selectedTeam === 'home' ? 'white' : '#666',
+                      fontWeight: selectedTeam === 'home' ? 700 : 500,
                       fontSize: '1.1rem',
                       userSelect: 'none',
                       pointerEvents: 'none',
@@ -685,8 +685,8 @@ function App() {
                 >
                   <span
                     style={{
-                      color: selectedTeam === 'home' ? 'white' : '#666',
-                      fontWeight: selectedTeam === 'home' ? 700 : 500,
+                      color: selectedTeam === 'away' ? 'white' : '#666',
+                      fontWeight: selectedTeam === 'away' ? 700 : 500,
                       fontSize: '1.1rem',
                       userSelect: 'none',
                       pointerEvents: 'none',
@@ -698,6 +698,16 @@ function App() {
                 </div>
               </div>
             </div>
+            <PredictedMatchups
+              team1Name={data.team1Name}
+              team2Name={data.team2Name}
+              team1Players={data.team1Players}
+              team2Players={data.team2Players}
+              matchupData={data.matchupData}
+              selectedMatches={selectedMatches}
+              availableTeam1Players={availableTeam1Players}
+              availableTeam2Players={availableTeam2Players}
+            />
             <BlindPlayerSelector
               team1Name={data.team1Name}
               team2Name={data.team2Name}
@@ -709,35 +719,25 @@ function App() {
               availableTeam2Players={availableTeam2Players}
               selectedTeam={selectedTeam}
               lockedOpponentTeam1Index={(() => {
-                // If team1 (away) player is highlighted and selectedTeam is 'home' (team2),
+                // If team1 (home) player is highlighted and selectedTeam is 'away' (team2),
                 // and no match is selected for that player, lock that opponent
                 const hasTeam1PlayerSelectedMatch = highlightedRow !== null &&
                   selectedMatches.some(m => m.team1Index === highlightedRow);
-                if (highlightedRow !== null && selectedTeam === 'home' && !hasTeam1PlayerSelectedMatch) {
+                if (highlightedRow !== null && selectedTeam === 'away' && !hasTeam1PlayerSelectedMatch) {
                   return highlightedRow;
                 }
                 return null;
               })()}
               lockedOpponentTeam2Index={(() => {
-                // If team2 (home) player is highlighted and selectedTeam is 'away' (team1),
+                // If team2 (away) player is highlighted and selectedTeam is 'home' (team1),
                 // and no match is selected for that player, lock that opponent
                 const hasTeam2PlayerSelectedMatch = highlightedColumn !== null &&
                   selectedMatches.some(m => m.team2Index === highlightedColumn);
-                if (highlightedColumn !== null && selectedTeam === 'away' && !hasTeam2PlayerSelectedMatch) {
+                if (highlightedColumn !== null && selectedTeam === 'home' && !hasTeam2PlayerSelectedMatch) {
                   return highlightedColumn;
                 }
                 return null;
               })()}
-            />
-            <PredictedMatchups
-              team1Name={data.team1Name}
-              team2Name={data.team2Name}
-              team1Players={data.team1Players}
-              team2Players={data.team2Players}
-              matchupData={data.matchupData}
-              selectedMatches={selectedMatches}
-              availableTeam1Players={availableTeam1Players}
-              availableTeam2Players={availableTeam2Players}
             />
           </>
         )}

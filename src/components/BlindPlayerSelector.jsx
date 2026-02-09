@@ -701,8 +701,8 @@ function BlindPlayerSelector({
   const blindPlayerScoresTeam2 = calculateBlindPlayerScores(2);
 
   // Determine which team to show based on selectedTeam prop
-  const showTeam1 = selectedTeam === 'away';
-  const showTeam2 = selectedTeam === 'home';
+  const showTeam1 = selectedTeam === 'home';
+  const showTeam2 = selectedTeam === 'away';
 
   const selectedTeamScores = showTeam1 ? blindPlayerScoresTeam1 : blindPlayerScoresTeam2;
   const selectedTeamName = showTeam1 ? team1Name : team2Name;

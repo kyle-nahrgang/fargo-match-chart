@@ -508,6 +508,14 @@ function PredictedMatchups({
             let selectedTeam1Wins = 0;
             let selectedTeam2Wins = 0;
 
+            // Calculate points for selected matches
+            const selectedTeam1Points = selectedMatches.reduce((sum, m) => {
+              return sum + (team1Players[m.team1Index]?.rating || 0);
+            }, 0);
+            const selectedTeam2Points = selectedMatches.reduce((sum, m) => {
+              return sum + (team2Players[m.team2Index]?.rating || 0);
+            }, 0);
+
             selectedMatches.forEach(match => {
               const matchup = matchupData[match.team1Index]?.[match.team2Index];
               if (matchup) {
@@ -530,6 +538,12 @@ function PredictedMatchups({
             const team1AvgWinProb = team1TotalWinProb / numMatches;
             const team2AvgWinProb = team2TotalWinProb / numMatches;
 
+            // Calculate total points used (selected + predicted)
+            const predictedTeam1Points = predictedMatchups ? predictedMatchups.reduce((sum, m) => sum + m.team1Player.rating, 0) : 0;
+            const predictedTeam2Points = predictedMatchups ? predictedMatchups.reduce((sum, m) => sum + m.team2Player.rating, 0) : 0;
+            const team1TotalPoints = selectedTeam1Points + predictedTeam1Points;
+            const team2TotalPoints = selectedTeam2Points + predictedTeam2Points;
+
             return (
               <div className="prediction-summary">
                 <div className="summary-header">Overall Expectation</div>
@@ -549,6 +563,10 @@ function PredictedMatchups({
                         <span className="stat-label">Avg Win %:</span>
                         <span className="stat-value">{(team1AvgWinProb * 100).toFixed(1)}%</span>
                       </div>
+                      <div className="summary-stat">
+                        <span className="stat-label">Handicap:</span>
+                        <span className="stat-value">{team1TotalPoints} of {maxPoints}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="summary-team">
@@ -565,6 +583,10 @@ function PredictedMatchups({
                       <div className="summary-stat">
                         <span className="stat-label">Avg Win %:</span>
                         <span className="stat-value">{(team2AvgWinProb * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="summary-stat">
+                        <span className="stat-label">Handicap:</span>
+                        <span className="stat-value">{team2TotalPoints} of {maxPoints}</span>
                       </div>
                     </div>
                   </div>
