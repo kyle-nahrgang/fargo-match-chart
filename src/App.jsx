@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MatchupGrid from './components/MatchupGrid';
-import OptimalLineups from './components/OptimalLineups';
 import BlindPlayerSelector from './components/BlindPlayerSelector';
+import LineupPermutations from './components/LineupPermutations';
 import PredictedMatchups from './components/PredictedMatchups';
 import RosterList from './components/RosterList';
 
@@ -738,6 +738,11 @@ function App() {
                 }
                 return null;
               })()}
+            />
+            <LineupPermutations
+              teamName={selectedTeam === 'home' ? data.team1Name : data.team2Name}
+              players={selectedTeam === 'home' ? data.team1Players : data.team2Players}
+              availablePlayers={selectedTeam === 'home' ? availableTeam1Players : availableTeam2Players}
             />
           </>
         )}

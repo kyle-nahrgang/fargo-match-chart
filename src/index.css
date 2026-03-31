@@ -1623,3 +1623,143 @@ code {
     max-height: 60px;
   }
 }
+
+/* Valid lineups (distinct 4-player sets, order ignored) — matches Predicted/Blind section layout */
+.lineups-section-container {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.lineups-section-container h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.lineups-explanation {
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #f3f0ff;
+  border-left: 4px solid #667eea;
+  border-radius: 4px;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.lineups-explanation-count {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.lineups-section-container .no-lineups {
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Lineups data table — same shell as MatchupGrid (.table-wrapper + .matchup-table) */
+.lineups-section-container .lineups-table-outer {
+  width: 100%;
+  max-width: 100%;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  margin-top: 0;
+}
+
+.lineups-section-container .lineups-table-outer .table-wrapper {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Simple-text cells: override MatchupGrid’s zero padding / custom headers */
+table.matchup-table.lineups-table {
+  width: 100%;
+  table-layout: auto;
+}
+
+table.matchup-table.lineups-table thead th {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 600;
+  font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+  border-right: 2px solid rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+table.matchup-table.lineups-table thead th:last-child {
+  border-right: none;
+}
+
+table.matchup-table.lineups-table tbody td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+  border-right: 2px solid #d0d0d0;
+  background: white;
+  font-size: clamp(0.8rem, 1.4vw, 0.95rem);
+  color: #333;
+}
+
+table.matchup-table.lineups-table tbody td:last-child {
+  border-right: none;
+}
+
+table.matchup-table.lineups-table tbody tr {
+  border-bottom: 2px solid #d0d0d0;
+  transition: background-color 0.2s;
+}
+
+table.matchup-table.lineups-table tbody tr:hover {
+  background-color: #f8f9ff;
+}
+
+table.matchup-table.lineups-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+table.matchup-table.lineups-table th.lineups-col-num,
+table.matchup-table.lineups-table td.lineups-col-num {
+  width: 3rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+
+table.matchup-table.lineups-table tbody td.lineups-col-num {
+  color: #666;
+  font-weight: 600;
+}
+
+table.matchup-table.lineups-table th.lineups-col-stat,
+table.matchup-table.lineups-table td.lineups-col-stat {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+table.matchup-table.lineups-table td.lineups-col-stat {
+  font-weight: 600;
+  color: #444;
+}
+
+table.matchup-table.lineups-table td.lineups-col-players {
+  line-height: 1.5;
+}
+
+.lineups-player-rating {
+  color: #764ba2;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
