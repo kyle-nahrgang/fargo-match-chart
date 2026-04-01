@@ -747,6 +747,10 @@ function App() {
               teamName={selectedTeam === 'home' ? data.team1Name : data.team2Name}
               players={selectedTeam === 'home' ? data.team1Players : data.team2Players}
               availablePlayers={selectedTeam === 'home' ? availableTeam1Players : availableTeam2Players}
+              matchupData={data.matchupData}
+              opponentPlayers={selectedTeam === 'home' ? data.team2Players : data.team1Players}
+              opponentAvailablePlayers={selectedTeam === 'home' ? availableTeam2Players : availableTeam1Players}
+              isTeam1={selectedTeam === 'home'}
             />
           </>
         )}
