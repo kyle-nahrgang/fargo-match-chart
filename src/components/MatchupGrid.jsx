@@ -357,6 +357,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
             >
               <div className={`player-name ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>{player.name}</div>
               <div className={`player-rating ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
+              <div className={`player-rating ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>Robustness: {player.robustness}</div>
             </div>
           );
         },

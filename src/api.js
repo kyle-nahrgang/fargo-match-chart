@@ -100,15 +100,14 @@ export async function getOdds(playerOneRank, playerTwoRank, playerOneRaceTo, pla
  * Extract player rating from player data.
  */
 export function getPlayerRating(player) {
-  if (player.rating !== undefined) {
-    return parseInt(player.rating);
-  } else if (player.fargoRating !== undefined) {
-    return parseInt(player.fargoRating);
-  } else if (player.fargo !== undefined) {
-    return parseInt(player.fargo);
-  } else {
-    throw new Error(`Could not find rating for player: ${JSON.stringify(player)}`);
-  }
+  return parseInt(player.fargoRating);
+}
+
+/**
+ * Extract Fargo robustness (games played toward rating) from player payload when present.
+ */
+export function getPlayerRobustness(player) {
+  return player.robustness;
 }
 
 /**
@@ -417,12 +416,14 @@ export async function getMatchupData(matchId) {
     team1Players: team1Players.map(p => ({
       id: p.id,
       name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-      rating: getPlayerRating(p)
+      rating: getPlayerRating(p),
+      robustness: getPlayerRobustness(p)
     })),
     team2Players: team2Players.map(p => ({
       id: p.id,
       name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-      rating: getPlayerRating(p)
+      rating: getPlayerRating(p),
+      robustness: getPlayerRobustness(p)
     })),
     matchupData
   };

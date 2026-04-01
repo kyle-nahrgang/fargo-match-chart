@@ -318,6 +318,7 @@ function OptimalLineups({ team1Name = 'Team 1', team2Name = 'Team 2', team1Playe
                           <div className="player-info">
                             <span className="player-name">{player.name}</span>
                             <span className="player-rating">Rating: {player.rating}</span>
+                            <span className="player-rating">Robustness: {player.robustness}</span>
                           </div>
                           {matchup && (
                             <div className="matchup-info">

@@ -94,6 +94,10 @@ function getPlayerRating(player) {
     }
 }
 
+function getPlayerRobustness(player) {
+    return Number(player.robustness)
+}
+
 // API endpoint to get divisions
 app.get('/api/divisions', async (req, res) => {
     try {
@@ -281,12 +285,14 @@ app.get('/api/matchups/:matchId', async (req, res) => {
             team1Players: team1Players.map(p => ({
                 id: p.id,
                 name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-                rating: getPlayerRating(p)
+                rating: getPlayerRating(p),
+                robustness: getPlayerRobustness(p)
             })),
             team2Players: team2Players.map(p => ({
                 id: p.id,
                 name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-                rating: getPlayerRating(p)
+                rating: getPlayerRating(p),
+                robustness: getPlayerRobustness(p)
             })),
             matchupData
         });

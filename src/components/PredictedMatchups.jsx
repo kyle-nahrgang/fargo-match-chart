@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { extractProbability, combinations, permutations } from '../utils';
+import { getBlindPlayerScores } from '../blindThrowRankings';
 
 const MINIMUM_WINNING_ODDS = 0.6;
 
@@ -37,7 +38,11 @@ function PredictedMatchups({
   numMatches = 4,
   selectedMatches = [],
   availableTeam1Players = new Set(),
-  availableTeam2Players = new Set()
+  availableTeam2Players = new Set(),
+  highlightedRow = null,
+  highlightedColumn = null,
+  lockedOpponentTeam1Index = null,
+  lockedOpponentTeam2Index = null
 }) {
 
   /**
@@ -397,29 +402,62 @@ function PredictedMatchups({
     // Match 1: Team 1 (away), Match 2: Team 2 (home), Match 3: Team 1 (away), Match 4: Team 2 (home)
     let currentBlindTeam = (selectedMatches.length % 2 === 0) ? 1 : 2;
 
+    const blindRankingCtx = {
+      team1Players,
+      team2Players,
+      matchupData,
+      maxPoints,
+      numMatches,
+      selectedMatches,
+      availableTeam1Players,
+      availableTeam2Players,
+      lockedOpponentTeam1Index,
+      lockedOpponentTeam2Index
+    };
+
     // Predict matches until we have 4 total (including selected matches)
     for (let i = 0; i < remainingMatches; i++) {
-      const result = findBestBlindPick(
-        currentBlindTeam,
-        currentUsedTeam1Indices,
-        currentUsedTeam2Indices,
-        remainingMatches - i,
-        remainingTeam1Points,
-        remainingTeam2Points
-      );
+      let result = null;
+
+      if (i === 0) {
+        const blindScores = getBlindPlayerScores(currentBlindTeam, blindRankingCtx);
+        const highlightBlindIndex =
+          currentBlindTeam === 1 ? highlightedRow : highlightedColumn;
+        const highlightedScore =
+          highlightBlindIndex != null
+            ? blindScores.find(s => s.player.index === highlightBlindIndex)
+            : null;
+        const score = highlightedScore ?? blindScores[0];
+
+        if (score) {
+          result = {
+            blindPick: score.player,
+            counterPick: score.counterPick,
+            blindMatchWinProb: score.blindMatchWinProb,
+            overallWinProb: score.totalWinProb,
+            race: score.blindMatchRace
+          };
+        }
+      }
 
       if (!result) {
-        // Can't find a valid pick, stop prediction
+        result = findBestBlindPick(
+          currentBlindTeam,
+          currentUsedTeam1Indices,
+          currentUsedTeam2Indices,
+          remainingMatches - i,
+          remainingTeam1Points,
+          remainingTeam2Points
+        );
+      }
+
+      if (!result) {
         break;
       }
 
       // Record the predicted matchup
       const team1Index = currentBlindTeam === 1 ? result.blindPick.index : result.counterPick.index;
       const team2Index = currentBlindTeam === 1 ? result.counterPick.index : result.blindPick.index;
-
-      // Determine which player was picked blind
-      const blindPlayer = currentBlindTeam === 1 ? team1Players[team1Index] : team2Players[team2Index];
-      const counterPlayer = currentBlindTeam === 1 ? team2Players[team2Index] : team1Players[team1Index];
 
       predicted.push({
         matchNumber: selectedMatches.length + i + 1,
@@ -447,7 +485,7 @@ function PredictedMatchups({
     }
 
     return predicted;
-  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players, team1Name, team2Name]);
+  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players, team1Name, team2Name, highlightedRow, highlightedColumn, lockedOpponentTeam1Index, lockedOpponentTeam2Index]);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -499,7 +537,7 @@ function PredictedMatchups({
         <>
           <p className="prediction-explanation">
             Predicted sequence of matchups assuming alternating blind picks. Away team ALWAYS throws blind first, then Home team, then alternating (Away → Home → Away → Home).
-            Each team selects the player that maximizes their overall night outcome, considering optimal counter-picks.
+            The next matchup uses your highlighted roster player as the blind pick when that player is on the team throwing blind; otherwise it matches the #1 Best Blind Throw (same ranking and counter-pick rules). Later predicted matches maximize overall night win probability with optimal counter-picks.
           </p>
           {((predictedMatchups && predictedMatchups.length > 0) || (selectedMatches && selectedMatches.length > 0)) && (() => {
             // Calculate win probabilities for selected matches

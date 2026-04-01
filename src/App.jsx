@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import MatchupGrid from './components/MatchupGrid';
 import BlindPlayerSelector from './components/BlindPlayerSelector';
 import LineupPermutations from './components/LineupPermutations';
@@ -195,6 +195,24 @@ function App() {
   const [selectedTeam, setSelectedTeam] = useState('home'); // 'home' or 'away'
   const [highlightedRow, setHighlightedRow] = useState(null); // team1 player index
   const [highlightedColumn, setHighlightedColumn] = useState(null); // team2 player index
+
+  const lockedOpponentTeam1Index = useMemo(() => {
+    const hasTeam1PlayerSelectedMatch = highlightedRow !== null &&
+      selectedMatches.some(m => m.team1Index === highlightedRow);
+    if (highlightedRow !== null && selectedTeam === 'away' && !hasTeam1PlayerSelectedMatch) {
+      return highlightedRow;
+    }
+    return null;
+  }, [highlightedRow, selectedTeam, selectedMatches]);
+
+  const lockedOpponentTeam2Index = useMemo(() => {
+    const hasTeam2PlayerSelectedMatch = highlightedColumn !== null &&
+      selectedMatches.some(m => m.team2Index === highlightedColumn);
+    if (highlightedColumn !== null && selectedTeam === 'home' && !hasTeam2PlayerSelectedMatch) {
+      return highlightedColumn;
+    }
+    return null;
+  }, [highlightedColumn, selectedTeam, selectedMatches]);
 
   // Fetch divisions and extract divisionId and matchId from URL parameters, or use defaults
   useEffect(() => {
@@ -707,6 +725,10 @@ function App() {
               selectedMatches={selectedMatches}
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
+              highlightedRow={highlightedRow}
+              highlightedColumn={highlightedColumn}
+              lockedOpponentTeam1Index={lockedOpponentTeam1Index}
+              lockedOpponentTeam2Index={lockedOpponentTeam2Index}
             />
             <BlindPlayerSelector
               team1Name={data.team1Name}
@@ -718,26 +740,8 @@ function App() {
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
               selectedTeam={selectedTeam}
-              lockedOpponentTeam1Index={(() => {
-                // If team1 (home) player is highlighted and selectedTeam is 'away' (team2),
-                // and no match is selected for that player, lock that opponent
-                const hasTeam1PlayerSelectedMatch = highlightedRow !== null &&
-                  selectedMatches.some(m => m.team1Index === highlightedRow);
-                if (highlightedRow !== null && selectedTeam === 'away' && !hasTeam1PlayerSelectedMatch) {
-                  return highlightedRow;
-                }
-                return null;
-              })()}
-              lockedOpponentTeam2Index={(() => {
-                // If team2 (away) player is highlighted and selectedTeam is 'home' (team1),
-                // and no match is selected for that player, lock that opponent
-                const hasTeam2PlayerSelectedMatch = highlightedColumn !== null &&
-                  selectedMatches.some(m => m.team2Index === highlightedColumn);
-                if (highlightedColumn !== null && selectedTeam === 'home' && !hasTeam2PlayerSelectedMatch) {
-                  return highlightedColumn;
-                }
-                return null;
-              })()}
+              lockedOpponentTeam1Index={lockedOpponentTeam1Index}
+              lockedOpponentTeam2Index={lockedOpponentTeam2Index}
             />
             <LineupPermutations
               teamName={selectedTeam === 'home' ? data.team1Name : data.team2Name}
