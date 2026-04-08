@@ -68,7 +68,7 @@ const categorizeMatches = (matches, currentMatchId) => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      past.push(match);
+      past.push({ match, date: matchDateOnly });
     } else {
       matchesByDate.push({ match, date: matchDateOnly, diffDays });
     }
@@ -110,7 +110,9 @@ const categorizeMatches = (matches, currentMatchId) => {
     // Past matches were already added in first pass
   });
 
-  return { current, future, past };
+  past.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  return { current, future, past: past.map(({ match }) => match) };
 };
 
 // Helper functions for localStorage caching
