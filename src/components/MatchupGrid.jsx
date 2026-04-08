@@ -9,7 +9,7 @@ import { extractProbability, combinations, permutations } from '../utils';
 
 const columnHelper = createColumnHelper();
 
-function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1Players = new Set(), availableTeam2Players = new Set(), onHighlightChange }) {
+function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1Players = new Set(), availableTeam2Players = new Set(), lockedTeam1Players = new Set(), lockedTeam2Players = new Set(), onHighlightChange }) {
   const { team1Name, team2Name, team1Players, team2Players, matchupData } = data;
   const maxPoints = 1900;
   const numMatches = 4;
@@ -347,15 +347,18 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
           const playerDisabled = isPlayerDisabled(rowIndex, true);
           const hasSelectedMatch = hasPlayerSelectedMatch(rowIndex, true);
           const isHighlighted = highlightedRow === rowIndex;
+          const isLocked = lockedTeam1Players.has(rowIndex);
           const headerDisabled = hasSelectedMatch;
 
           return (
             <div
-              className={`row-header-cell ${playerDisabled ? 'player-disabled' : ''} ${headerDisabled ? 'header-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+              className={`row-header-cell ${playerDisabled ? 'player-disabled' : ''} ${headerDisabled ? 'header-disabled' : ''} ${isHighlighted ? 'highlighted' : ''} ${isLocked ? 'player-locked' : ''}`}
               onClick={() => !headerDisabled && handleRowHeaderClick(rowIndex)}
               style={{ cursor: headerDisabled ? 'not-allowed' : 'pointer' }}
             >
-              <div className={`player-name ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+              <div className={`player-name ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>
+                {isLocked && <span className="player-lock-icon">🔒 </span>}{player.name}
+              </div>
               <div className={`player-rating ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
               <div className={`player-rating ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>Robustness: {player.robustness}</div>
             </div>
@@ -380,14 +383,17 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
           header: () => {
             const isHighlighted = highlightedColumn === index;
             const hasSelectedMatch = hasPlayerSelectedMatch(index, false);
+            const isLocked = lockedTeam2Players.has(index);
             const headerDisabled = hasSelectedMatch;
             return (
               <div
-                className={`col-header-cell ${playerDisabled ? 'player-disabled' : ''} ${headerDisabled ? 'header-disabled' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+                className={`col-header-cell ${playerDisabled ? 'player-disabled' : ''} ${headerDisabled ? 'header-disabled' : ''} ${isHighlighted ? 'highlighted' : ''} ${isLocked ? 'player-locked' : ''}`}
                 onClick={() => !headerDisabled && handleColumnHeaderClick(index)}
                 style={{ cursor: headerDisabled ? 'not-allowed' : 'pointer' }}
               >
-                <div className={`player-name ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>{player.name}</div>
+                <div className={`player-name ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>
+                  {isLocked && <span className="player-lock-icon">🔒 </span>}{player.name}
+                </div>
                 <div className={`player-rating ${playerDisabled ? 'disabled' : ''} ${headerDisabled ? 'disabled' : ''}`}>Rating: {player.rating}</div>
               </div>
             );
@@ -438,7 +444,7 @@ function MatchupGrid({ data, selectedMatches = [], onMatchSelect, availableTeam1
     });
 
     return cols;
-  }, [team1Players, team2Players, matchupData, selectedMatches, highlightedRow, highlightedColumn, availableTeam1Players, availableTeam2Players]);
+  }, [team1Players, team2Players, matchupData, selectedMatches, highlightedRow, highlightedColumn, availableTeam1Players, availableTeam2Players, lockedTeam1Players, lockedTeam2Players]);
 
   // Create table data - include all team 1 players, mark unavailable ones as hidden
   const tableData = useMemo(() => {

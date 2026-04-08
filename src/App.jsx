@@ -118,14 +118,20 @@ const categorizeMatches = (matches, currentMatchId) => {
 // Helper functions for localStorage caching
 const getCacheKey = (matchId, key) => `fargo_match_${matchId}_${key}`;
 
+const LOCKED_PLAYER_KEYS = new Set([
+  'availableTeam1Players',
+  'availableTeam2Players',
+  'lockedTeam1Players',
+  'lockedTeam2Players',
+]);
+
 const loadFromCache = (matchId, key, defaultValue) => {
   if (!matchId) return defaultValue;
   try {
     const cached = localStorage.getItem(getCacheKey(matchId, key));
     if (cached) {
       const parsed = JSON.parse(cached);
-      // Convert arrays back to Sets for available players
-      if (key === 'availableTeam1Players' || key === 'availableTeam2Players') {
+      if (LOCKED_PLAYER_KEYS.has(key)) {
         return new Set(parsed);
       }
       return parsed;
@@ -152,6 +158,8 @@ const clearCache = (matchId) => {
   try {
     localStorage.removeItem(getCacheKey(matchId, 'availableTeam1Players'));
     localStorage.removeItem(getCacheKey(matchId, 'availableTeam2Players'));
+    localStorage.removeItem(getCacheKey(matchId, 'lockedTeam1Players'));
+    localStorage.removeItem(getCacheKey(matchId, 'lockedTeam2Players'));
     localStorage.removeItem(getCacheKey(matchId, 'selectedMatches'));
     localStorage.removeItem(getCacheKey(matchId, 'selectedTeam'));
   } catch (error) {
@@ -194,6 +202,8 @@ function App() {
   const [selectedMatches, setSelectedMatches] = useState([]);
   const [availableTeam1Players, setAvailableTeam1Players] = useState(new Set());
   const [availableTeam2Players, setAvailableTeam2Players] = useState(new Set());
+  const [lockedTeam1Players, setLockedTeam1Players] = useState(new Set());
+  const [lockedTeam2Players, setLockedTeam2Players] = useState(new Set());
   const [selectedTeam, setSelectedTeam] = useState('home'); // 'home' or 'away'
   const [highlightedRow, setHighlightedRow] = useState(null); // team1 player index
   const [highlightedColumn, setHighlightedColumn] = useState(null); // team2 player index
@@ -330,11 +340,15 @@ function App() {
         'availableTeam2Players',
         new Set(result.team2Players.map((_, idx) => idx))
       );
+      const cachedLockedTeam1 = loadFromCache(id.trim(), 'lockedTeam1Players', new Set());
+      const cachedLockedTeam2 = loadFromCache(id.trim(), 'lockedTeam2Players', new Set());
       const cachedSelectedMatches = loadFromCache(id.trim(), 'selectedMatches', []);
       const cachedSelectedTeam = loadFromCache(id.trim(), 'selectedTeam', 'home');
 
       setAvailableTeam1Players(cachedAvailableTeam1);
       setAvailableTeam2Players(cachedAvailableTeam2);
+      setLockedTeam1Players(cachedLockedTeam1);
+      setLockedTeam2Players(cachedLockedTeam2);
       setSelectedMatches(cachedSelectedMatches);
       setSelectedTeam(cachedSelectedTeam);
     } catch (err) {
@@ -367,6 +381,8 @@ function App() {
     setSelectedMatches([]);
     setAvailableTeam1Players(new Set());
     setAvailableTeam2Players(new Set());
+    setLockedTeam1Players(new Set());
+    setLockedTeam2Players(new Set());
     setSelectedTeam('home');
 
     await fetchDivisionSchedule(selectedDivisionId);
@@ -558,6 +574,8 @@ function App() {
                   setSelectedMatches([]);
                   setAvailableTeam1Players(new Set());
                   setAvailableTeam2Players(new Set());
+                  setLockedTeam1Players(new Set());
+                  setLockedTeam2Players(new Set());
                   setSelectedTeam('home');
                   // Keep divisionId and matches so user can select another match
                   const params = new URLSearchParams(window.location.search);
@@ -592,7 +610,12 @@ function App() {
                 teamName={data.team1Name}
                 players={data.team1Players}
                 availablePlayers={availableTeam1Players}
-                onAvailabilityChange={(newSet) => setAvailableTeam1Players(newSet)}
+                lockedPlayers={lockedTeam1Players}
+                onAvailabilityChange={(newAvailable, newLocked) => {
+                  setAvailableTeam1Players(newAvailable);
+                  setLockedTeam1Players(newLocked);
+                  saveToCache(matchId, 'lockedTeam1Players', newLocked);
+                }}
                 matchId={matchId}
                 selectedMatches={selectedMatches}
                 teamType="team1"
@@ -606,7 +629,12 @@ function App() {
                 teamName={data.team2Name}
                 players={data.team2Players}
                 availablePlayers={availableTeam2Players}
-                onAvailabilityChange={(newSet) => setAvailableTeam2Players(newSet)}
+                lockedPlayers={lockedTeam2Players}
+                onAvailabilityChange={(newAvailable, newLocked) => {
+                  setAvailableTeam2Players(newAvailable);
+                  setLockedTeam2Players(newLocked);
+                  saveToCache(matchId, 'lockedTeam2Players', newLocked);
+                }}
                 matchId={matchId}
                 selectedMatches={selectedMatches}
                 teamType="team2"
@@ -626,6 +654,8 @@ function App() {
               }}
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
+              lockedTeam1Players={lockedTeam1Players}
+              lockedTeam2Players={lockedTeam2Players}
               onHighlightChange={(row, column) => {
                 setHighlightedRow(row);
                 setHighlightedColumn(column);
@@ -727,6 +757,8 @@ function App() {
               selectedMatches={selectedMatches}
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
+              lockedTeam1Players={lockedTeam1Players}
+              lockedTeam2Players={lockedTeam2Players}
               highlightedRow={highlightedRow}
               highlightedColumn={highlightedColumn}
               lockedOpponentTeam1Index={lockedOpponentTeam1Index}
@@ -741,6 +773,8 @@ function App() {
               selectedMatches={selectedMatches}
               availableTeam1Players={availableTeam1Players}
               availableTeam2Players={availableTeam2Players}
+              lockedTeam1Players={lockedTeam1Players}
+              lockedTeam2Players={lockedTeam2Players}
               selectedTeam={selectedTeam}
               lockedOpponentTeam1Index={lockedOpponentTeam1Index}
               lockedOpponentTeam2Index={lockedOpponentTeam2Index}
@@ -749,6 +783,7 @@ function App() {
               teamName={selectedTeam === 'home' ? data.team1Name : data.team2Name}
               players={selectedTeam === 'home' ? data.team1Players : data.team2Players}
               availablePlayers={selectedTeam === 'home' ? availableTeam1Players : availableTeam2Players}
+              lockedPlayers={selectedTeam === 'home' ? lockedTeam1Players : lockedTeam2Players}
               matchupData={data.matchupData}
               opponentPlayers={selectedTeam === 'home' ? data.team2Players : data.team1Players}
               opponentAvailablePlayers={selectedTeam === 'home' ? availableTeam2Players : availableTeam1Players}

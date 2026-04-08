@@ -39,11 +39,26 @@ function PredictedMatchups({
   selectedMatches = [],
   availableTeam1Players = new Set(),
   availableTeam2Players = new Set(),
+  lockedTeam1Players = new Set(),
+  lockedTeam2Players = new Set(),
   highlightedRow = null,
   highlightedColumn = null,
   lockedOpponentTeam1Index = null,
   lockedOpponentTeam2Index = null
 }) {
+
+  /**
+   * Build valid combos of `size` players from a pool, forcing locked players (not yet used) into
+   * every combo.
+   */
+  const buildLockedCombos = (pool, size, lockedSet) => {
+    const lockedInPool = pool.filter(p => lockedSet && lockedSet.has(p.index));
+    const nonLockedInPool = pool.filter(p => !lockedSet || !lockedSet.has(p.index));
+    if (lockedInPool.length > size) return [];
+    const slotsToFill = size - lockedInPool.length;
+    if (slotsToFill === 0) return [lockedInPool];
+    return combinations(nonLockedInPool, slotsToFill).map(c => [...lockedInPool, ...c]);
+  };
 
   /**
    * Calculate best remaining lineup after a set of matches
@@ -73,7 +88,7 @@ function PredictedMatchups({
       return null;
     }
 
-    const team1Combos = combinations(availableTeam1PlayersFiltered, remainingMatches);
+    const team1Combos = buildLockedCombos(availableTeam1PlayersFiltered, remainingMatches, lockedTeam1Players);
     const validTeam1Combos = team1Combos.filter(combo => {
       const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
       return totalPoints <= remainingTeam1Points;
@@ -83,7 +98,7 @@ function PredictedMatchups({
       return null;
     }
 
-    const team2Combos = combinations(availableTeam2PlayersFiltered, remainingMatches);
+    const team2Combos = buildLockedCombos(availableTeam2PlayersFiltered, remainingMatches, lockedTeam2Players);
     const validTeam2Combos = team2Combos.filter(combo => {
       const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
       return totalPoints <= remainingTeam2Points;
@@ -411,6 +426,8 @@ function PredictedMatchups({
       selectedMatches,
       availableTeam1Players,
       availableTeam2Players,
+      lockedTeam1Players,
+      lockedTeam2Players,
       lockedOpponentTeam1Index,
       lockedOpponentTeam2Index
     };
@@ -485,7 +502,7 @@ function PredictedMatchups({
     }
 
     return predicted;
-  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players, team1Name, team2Name, highlightedRow, highlightedColumn, lockedOpponentTeam1Index, lockedOpponentTeam2Index]);
+  }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players, lockedTeam1Players, lockedTeam2Players, team1Name, team2Name, highlightedRow, highlightedColumn, lockedOpponentTeam1Index, lockedOpponentTeam2Index]);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 

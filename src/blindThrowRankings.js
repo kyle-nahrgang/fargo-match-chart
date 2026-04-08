@@ -3,6 +3,26 @@ import { extractProbability, combinations, permutations } from './utils';
 export const MINIMUM_WINNING_ODDS = 0.6;
 
 /**
+ * Build valid combos of `size` players from a pool, where locked players (not yet used)
+ * must be included in every combo.
+ */
+function buildLockedCombos(pool, size, lockedSet) {
+  const lockedInPool = pool.filter(p => lockedSet && lockedSet.has(p.index));
+  const nonLockedInPool = pool.filter(p => !lockedSet || !lockedSet.has(p.index));
+
+  if (lockedInPool.length > size) {
+    return []; // Too many locked players to fit
+  }
+
+  const slotsToFill = size - lockedInPool.length;
+  if (slotsToFill === 0) {
+    return [lockedInPool];
+  }
+
+  return combinations(nonLockedInPool, slotsToFill).map(c => [...lockedInPool, ...c]);
+}
+
+/**
  * Best remaining lineup after a blind pick (max total win probability for teamNumber).
  */
 export function calculateBestRemainingLineup(
@@ -11,7 +31,9 @@ export function calculateBestRemainingLineup(
     team2Players,
     matchupData,
     availableTeam1Players,
-    availableTeam2Players
+    availableTeam2Players,
+    lockedTeam1Players,
+    lockedTeam2Players
   },
   usedTeam1Indices,
   usedTeam2Indices,
@@ -36,7 +58,7 @@ export function calculateBestRemainingLineup(
     return null;
   }
 
-  const team1Combos = combinations(availableTeam1PlayersFiltered, remainingMatches);
+  const team1Combos = buildLockedCombos(availableTeam1PlayersFiltered, remainingMatches, lockedTeam1Players);
   const validTeam1Combos = team1Combos.filter(combo => {
     const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
     return totalPoints <= remainingTeam1Points;
@@ -46,7 +68,7 @@ export function calculateBestRemainingLineup(
     return null;
   }
 
-  const team2Combos = combinations(availableTeam2PlayersFiltered, remainingMatches);
+  const team2Combos = buildLockedCombos(availableTeam2PlayersFiltered, remainingMatches, lockedTeam2Players);
   const validTeam2Combos = team2Combos.filter(combo => {
     const totalPoints = combo.reduce((sum, p) => sum + p.rating, 0);
     return totalPoints <= remainingTeam2Points;
@@ -123,6 +145,8 @@ export function getBlindPlayerScores(teamNumber, {
   selectedMatches,
   availableTeam1Players,
   availableTeam2Players,
+  lockedTeam1Players,
+  lockedTeam2Players,
   lockedOpponentTeam1Index,
   lockedOpponentTeam2Index
 }) {
@@ -180,7 +204,9 @@ export function getBlindPlayerScores(teamNumber, {
     team2Players,
     matchupData,
     availableTeam1Players,
-    availableTeam2Players
+    availableTeam2Players,
+    lockedTeam1Players,
+    lockedTeam2Players
   };
 
   const blindPlayerScores = [];

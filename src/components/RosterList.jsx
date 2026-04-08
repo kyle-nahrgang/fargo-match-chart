@@ -3,22 +3,28 @@ import React from 'react';
 /**
  * RosterList Component
  *
- * A reusable component for displaying a team's roster with availability checkboxes.
+ * Tri-state availability per player:
+ *   unavailable → available → locked → unavailable (cycles on click)
  *
- * @param {string} teamName - The name of the team
- * @param {Array} players - Array of player objects with name and rating properties
- * @param {Set} availablePlayers - Set of available player indices
- * @param {Function} onAvailabilityChange - Callback when availability changes (newSet) => void
- * @param {string} matchId - Current match ID for caching
- * @param {Array} selectedMatches - Array of selected matches to filter when clearing
- * @param {string} teamType - 'team1' or 'team2' to determine which matches to clear
- * @param {Function} saveToCache - Function to save to cache (matchId, key, value) => void
- * @param {Function} onSelectedMatchesChange - Callback when selected matches need to be updated (filtered) => void
+ * "Locked" means the player is definitely playing and will always be
+ * included in lineup calculations regardless of other selections.
+ *
+ * @param {string} teamName
+ * @param {Array} players
+ * @param {Set} availablePlayers - Set of available player indices (includes locked)
+ * @param {Set} lockedPlayers - Set of locked player indices (subset of available)
+ * @param {Function} onAvailabilityChange - (newAvailableSet, newLockedSet) => void
+ * @param {string} matchId
+ * @param {Array} selectedMatches
+ * @param {string} teamType - 'team1' or 'team2'
+ * @param {Function} saveToCache
+ * @param {Function} onSelectedMatchesChange
  */
 function RosterList({
   teamName,
   players,
   availablePlayers,
+  lockedPlayers = new Set(),
   onAvailabilityChange,
   matchId,
   selectedMatches,
@@ -26,13 +32,26 @@ function RosterList({
   saveToCache,
   onSelectedMatchesChange
 }) {
-  const handleCheckboxChange = (index, checked) => {
-    const newSet = new Set(availablePlayers);
-    if (checked) {
-      newSet.add(index);
+  // Cycle: unavailable → available → locked → unavailable
+  const handlePlayerClick = (index) => {
+    const isAvailable = availablePlayers.has(index);
+    const isLocked = lockedPlayers.has(index);
+
+    const newAvailable = new Set(availablePlayers);
+    const newLocked = new Set(lockedPlayers);
+
+    if (!isAvailable) {
+      // unavailable → available
+      newAvailable.add(index);
+    } else if (isAvailable && !isLocked) {
+      // available → locked
+      newLocked.add(index);
     } else {
-      newSet.delete(index);
-      // Clear any selected matches involving this player
+      // locked → unavailable
+      newAvailable.delete(index);
+      newLocked.delete(index);
+
+      // Clear any selected matches involving this player when they become unavailable
       const filtered = selectedMatches.filter(m => {
         if (teamType === 'team1') {
           return m.team1Index !== index;
@@ -44,26 +63,49 @@ function RosterList({
         onSelectedMatchesChange(filtered);
       }
     }
-    onAvailabilityChange(newSet);
-    saveToCache(matchId, teamType === 'team1' ? 'availableTeam1Players' : 'availableTeam2Players', newSet);
+
+    onAvailabilityChange(newAvailable, newLocked);
+    saveToCache(matchId, teamType === 'team1' ? 'availableTeam1Players' : 'availableTeam2Players', newAvailable);
+  };
+
+  const getPlayerState = (index) => {
+    if (lockedPlayers.has(index)) return 'locked';
+    if (availablePlayers.has(index)) return 'available';
+    return 'unavailable';
   };
 
   return (
     <div className="availability-section">
       <h3 className="availability-title">{teamName}</h3>
       <div className="availability-checkboxes">
-        {players.map((player, index) => (
-          <label key={index} className="availability-checkbox">
-            <input
-              type="checkbox"
-              checked={availablePlayers.has(index)}
-              onChange={(e) => handleCheckboxChange(index, e.target.checked)}
-            />
-            <span className="checkbox-label">
-              {player.name} <span className="rating-text">({player.rating})</span>
-            </span>
-          </label>
-        ))}
+        {players.map((player, index) => {
+          const state = getPlayerState(index);
+          return (
+            <label
+              key={index}
+              className={`availability-checkbox availability-checkbox--${state}`}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePlayerClick(index);
+              }}
+              title={
+                state === 'locked'
+                  ? 'Locked in — definitely playing. Click to mark unavailable.'
+                  : state === 'available'
+                  ? 'Available — might play. Click to lock in.'
+                  : 'Unavailable. Click to mark available.'
+              }
+            >
+              <span className={`tristate-indicator tristate-indicator--${state}`}>
+                {state === 'locked' ? '🔒' : state === 'available' ? '✓' : ''}
+              </span>
+              <span className="checkbox-label">
+                {player.name} <span className="rating-text">({player.rating})</span>
+                {state === 'locked' && <span className="locked-badge"> Locked</span>}
+              </span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );

@@ -45,11 +45,13 @@ function averageWinPctAgainstAvailableOpponents(
 /**
  * Lists each distinct set of four available players (order ignored) that satisfies the team
  * point cap (total Fargo rating ≤ maxPoints). Handicap is the Fargo rating used elsewhere.
+ * Locked players are always included in every valid lineup.
  */
 function LineupPermutations({
   teamName,
   players,
   availablePlayers,
+  lockedPlayers = new Set(),
   maxPoints = 1900,
   matchupData,
   opponentPlayers,
@@ -68,14 +70,29 @@ function LineupPermutations({
             .sort((a, b) => a - b)
         : [];
 
-    const indices = [...availablePlayers]
+    const allIndices = [...availablePlayers]
       .filter((i) => i >= 0 && i < players.length)
       .sort((a, b) => a - b);
-    if (indices.length < 4) {
+
+    const lockedIndices = allIndices.filter((i) => lockedPlayers.has(i));
+    const nonLockedIndices = allIndices.filter((i) => !lockedPlayers.has(i));
+
+    // If there are more locked players than lineup slots, no valid lineups
+    if (lockedIndices.length > 4) {
+      return { rows: [], notEnoughPlayers: false };
+    }
+
+    // Need enough total available players to fill 4 slots
+    if (allIndices.length < 4) {
       return { rows: [], notEnoughPlayers: true };
     }
 
-    const combos = combinations(indices, 4);
+    // Choose remaining slots from non-locked players
+    const slotsToFill = 4 - lockedIndices.length;
+    const combos = slotsToFill === 0
+      ? [lockedIndices]
+      : combinations(nonLockedIndices, slotsToFill).map((c) => [...lockedIndices, ...c]);
+
     const result = [];
     for (const combo of combos) {
       const handicaps = combo.map((i) => players[i].rating);
@@ -120,6 +137,7 @@ function LineupPermutations({
   }, [
     players,
     availablePlayers,
+    lockedPlayers,
     maxPoints,
     matchupData,
     opponentPlayers,
@@ -155,7 +173,7 @@ function LineupPermutations({
         <>
           <p className="lineups-explanation">
             Each row is one set of four players (order does not matter), from those marked available on this team, with total handicap at most{' '}
-            {maxPoints} (league cap). Sorted by average win % (highest first; rows without data last). Handicap is Fargo rating (same as roster).
+            {maxPoints} (league cap).{lockedPlayers.size > 0 && ` Locked players (🔒) appear in every lineup.`} Sorted by average win % (highest first; rows without data last). Handicap is Fargo rating (same as roster).
             Average win % is the mean win probability over every pairing of a lineup player vs each available opponent (equal weight per pairing); balanced pools tend toward 50%.
             {rows.length > 0 && (
               <span className="lineups-explanation-count"> {rows.length} valid lineups</span>

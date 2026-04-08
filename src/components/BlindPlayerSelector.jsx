@@ -180,6 +180,8 @@ function BlindPlayerSelector({
   selectedMatches = [],
   availableTeam1Players = new Set(),
   availableTeam2Players = new Set(),
+  lockedTeam1Players = new Set(),
+  lockedTeam2Players = new Set(),
   selectedTeam = 'home', // 'home' or 'away'
   lockedOpponentTeam1Index = null, // If set, assume this team1 player will be the opponent
   lockedOpponentTeam2Index = null  // If set, assume this team2 player will be the opponent
@@ -205,6 +207,8 @@ function BlindPlayerSelector({
       selectedMatches,
       availableTeam1Players,
       availableTeam2Players,
+      lockedTeam1Players,
+      lockedTeam2Players,
       lockedOpponentTeam1Index,
       lockedOpponentTeam2Index
     }),
@@ -217,6 +221,8 @@ function BlindPlayerSelector({
       selectedMatchesKey,
       availableTeam1Players,
       availableTeam2Players,
+      lockedTeam1Players,
+      lockedTeam2Players,
       lockedOpponentTeam1Index,
       lockedOpponentTeam2Index
     ]
@@ -232,6 +238,8 @@ function BlindPlayerSelector({
       selectedMatches,
       availableTeam1Players,
       availableTeam2Players,
+      lockedTeam1Players,
+      lockedTeam2Players,
       lockedOpponentTeam1Index,
       lockedOpponentTeam2Index
     }),
@@ -244,6 +252,8 @@ function BlindPlayerSelector({
       selectedMatchesKey,
       availableTeam1Players,
       availableTeam2Players,
+      lockedTeam1Players,
+      lockedTeam2Players,
       lockedOpponentTeam1Index,
       lockedOpponentTeam2Index
     ]
