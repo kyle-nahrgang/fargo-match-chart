@@ -189,6 +189,23 @@ const loadRecentMatch = (divisionId) => {
   }
 };
 
+const ACTIVE_TAB_STORAGE_KEY = 'fargo_active_tab';
+/** Legacy key from before rename; still read once for migration. */
+const LEGACY_ACTIVE_TAB_STORAGE_KEY = 'fargo_analysis_active_tab';
+const VALID_ACTIVE_TABS = new Set(['roster', 'grid', 'predicted', 'blind', 'lineups']);
+
+const loadStoredActiveTab = () => {
+  try {
+    const raw =
+      localStorage.getItem(ACTIVE_TAB_STORAGE_KEY) ||
+      localStorage.getItem(LEGACY_ACTIVE_TAB_STORAGE_KEY);
+    if (raw && VALID_ACTIVE_TABS.has(raw)) return raw;
+  } catch (error) {
+    console.warn('Failed to load stored active tab:', error);
+  }
+  return 'roster';
+};
+
 function App() {
   const [divisions, setDivisions] = useState([]);
   const [loadingDivisions, setLoadingDivisions] = useState(false);
@@ -205,9 +222,18 @@ function App() {
   const [lockedTeam1Players, setLockedTeam1Players] = useState(new Set());
   const [lockedTeam2Players, setLockedTeam2Players] = useState(new Set());
   const [selectedTeam, setSelectedTeam] = useState('home'); // 'home' or 'away'
-  const [activeTab, setActiveTab] = useState('predicted'); // 'roster' | 'grid' | 'predicted' | 'blind' | 'lineups'
+  const [activeTab, setActiveTab] = useState(loadStoredActiveTab); // 'roster' | 'grid' | 'predicted' | 'blind' | 'lineups'
   const [highlightedRow, setHighlightedRow] = useState(null); // team1 player index
   const [highlightedColumn, setHighlightedColumn] = useState(null); // team2 player index
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+      localStorage.removeItem(LEGACY_ACTIVE_TAB_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Failed to persist active tab:', error);
+    }
+  }, [activeTab]);
 
   const lockedOpponentTeam1Index = useMemo(() => {
     const hasTeam1PlayerSelectedMatch = highlightedRow !== null &&
@@ -604,34 +630,34 @@ function App() {
         )}
 
         {data && (
-          <div className="analysis-tabs-container">
-            <div className="analysis-tabs-header">
+          <div className="active-tabs-container">
+            <div className="active-tabs-header">
               <button
-                className={`analysis-tab-btn${activeTab === 'roster' ? ' analysis-tab-btn--active' : ''}`}
+                className={`active-tab-btn${activeTab === 'roster' ? ' active-tab-btn--active' : ''}`}
                 onClick={() => setActiveTab('roster')}
               >
                 Roster
               </button>
               <button
-                className={`analysis-tab-btn${activeTab === 'grid' ? ' analysis-tab-btn--active' : ''}`}
+                className={`active-tab-btn${activeTab === 'grid' ? ' active-tab-btn--active' : ''}`}
                 onClick={() => setActiveTab('grid')}
               >
                 Grid
               </button>
               <button
-                className={`analysis-tab-btn${activeTab === 'predicted' ? ' analysis-tab-btn--active' : ''}`}
+                className={`active-tab-btn${activeTab === 'predicted' ? ' active-tab-btn--active' : ''}`}
                 onClick={() => setActiveTab('predicted')}
               >
                 Predicted
               </button>
               <button
-                className={`analysis-tab-btn${activeTab === 'blind' ? ' analysis-tab-btn--active' : ''}`}
+                className={`active-tab-btn${activeTab === 'blind' ? ' active-tab-btn--active' : ''}`}
                 onClick={() => setActiveTab('blind')}
               >
                 Blind Throws
               </button>
               <button
-                className={`analysis-tab-btn${activeTab === 'lineups' ? ' analysis-tab-btn--active' : ''}`}
+                className={`active-tab-btn${activeTab === 'lineups' ? ' active-tab-btn--active' : ''}`}
                 onClick={() => setActiveTab('lineups')}
               >
                 Valid Lineups
@@ -667,7 +693,7 @@ function App() {
               </div>
             )}
 
-            <div className="analysis-tab-panel">
+            <div className="active-tab-panel">
               {activeTab === 'roster' && (
                 <div className="player-availability-container">
                   <RosterList

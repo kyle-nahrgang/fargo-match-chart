@@ -797,8 +797,8 @@ code {
   font-size: 0.85em;
 }
 
-/* Analysis Tabs */
-.analysis-tabs-container {
+/* Active Tabs */
+.active-tabs-container {
   margin-top: 32px;
   border-radius: 12px;
   overflow: hidden;
@@ -806,13 +806,13 @@ code {
   background: #fff;
 }
 
-.analysis-tabs-header {
+.active-tabs-header {
   display: flex;
   background: #f4f5f7;
   border-bottom: 2px solid #e0e0e0;
 }
 
-.analysis-tab-btn {
+.active-tab-btn {
   flex: 1;
   padding: 14px 12px;
   border: none;
@@ -827,18 +827,18 @@ code {
   letter-spacing: 0.01em;
 }
 
-.analysis-tab-btn:hover {
+.active-tab-btn:hover {
   color: #667eea;
   background-color: rgba(102, 126, 234, 0.06);
 }
 
-.analysis-tab-btn--active {
+.active-tab-btn--active {
   color: #667eea;
   border-bottom-color: #667eea;
   background-color: #fff;
 }
 
-.analysis-tab-panel {
+.active-tab-panel {
   padding: 20px;
   min-height: 160px;
 }
