@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { MINIMUM_WINNING_ODDS, getBlindPlayerScores } from '../blindThrowRankings';
 
 // Reusable component for blind match section
@@ -261,12 +261,9 @@ function BlindPlayerSelector({
 
   const selectedTeamScores = viewingTeam === 1 ? blindPlayerScoresTeam1 : blindPlayerScoresTeam2;
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
   if (!team1Players || !team2Players || !matchupData) {
     return (
       <div className="blind-player-selector-container">
-        <h2>Best Blind Throws</h2>
         <p className="no-blind-players">Waiting for matchup data...</p>
       </div>
     );
@@ -278,21 +275,9 @@ function BlindPlayerSelector({
   if (remainingToSchedule === 0) {
     return (
       <div className="blind-player-selector-container">
-        <h2
-          className="collapsible-header"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <span>Best Blind Throws</span>
-          <span style={{ fontSize: '1.2rem', transition: 'transform 0.3s ease', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}>
-            ▼
-          </span>
-        </h2>
-        {!isCollapsed && (
-          <p className="no-blind-players">
-            All {numMatches} matches are set — there is no upcoming blind pick.
-          </p>
-        )}
+        <p className="no-blind-players">
+          All {numMatches} matches are set — there is no upcoming blind pick.
+        </p>
       </div>
     );
   }
@@ -300,65 +285,39 @@ function BlindPlayerSelector({
   if (selectedTeamScores.length === 0) {
     return (
       <div className="blind-player-selector-container">
-        <h2
-          className="collapsible-header"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <span>Best Blind Throws</span>
-          <span style={{ fontSize: '1.2rem', transition: 'transform 0.3s ease', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}>
-            ▼
-          </span>
-        </h2>
-        {!isCollapsed && (
-          <p className="no-blind-players">
-            No valid blind players found for {selectedTeamName}.
-            <br />
-            <small>
-              All matches may be selected, or no players meet the constraints.
-            </small>
-          </p>
-        )}
+        <p className="no-blind-players">
+          No valid blind players found for {selectedTeamName}.
+          <br />
+          <small>
+            All matches may be selected, or no players meet the constraints.
+          </small>
+        </p>
       </div>
     );
   }
 
   return (
     <div className="blind-player-selector-container">
-      <h2
-        className="collapsible-header"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-      >
-        <span>Best Blind Throws</span>
-        <span style={{ fontSize: '1.2rem', transition: 'transform 0.3s ease', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}>
-          ▼
-        </span>
-      </h2>
-      {!isCollapsed && (
-        <>
-          <p className="blind-explanation">
-            Next blind pick (by draft order): <strong>{nextBlindTeamName}</strong>.
-            <br />
-            Below: best players for <strong>{selectedTeamName}</strong> to throw blind given the matches already on the grid — rankings refresh when you add or remove selections.
-            The algorithm maximizes the number of matches won ({'>'}60% win probability) rather than total win probability.
-            The opponent is assumed to counter with the lowest-rated player with ≥60% win probability as their counter-pick.
-          </p>
-          {viewingTeam !== nextBlindTeam && (
-            <p className="blind-explanation" style={{ marginTop: '-0.5rem', opacity: 0.9 }}>
-              You are viewing a hypothetical for {selectedTeamName}; the next blind is {nextBlindTeamName}.
-            </p>
-          )}
-          <div className="blind-players-columns">
-            <BlindPlayerColumn
-              teamName={selectedTeamName}
-              scores={selectedTeamScores}
-              numMatches={numMatches}
-              selectedMatches={selectedMatches}
-            />
-          </div>
-        </>
+      <p className="blind-explanation">
+        Next blind pick (by draft order): <strong>{nextBlindTeamName}</strong>.
+        <br />
+        Below: best players for <strong>{selectedTeamName}</strong> to throw blind given the matches already on the grid — rankings refresh when you add or remove selections.
+        The algorithm maximizes the number of matches won ({'>'}60% win probability) rather than total win probability.
+        The opponent is assumed to counter with the lowest-rated player with ≥60% win probability as their counter-pick.
+      </p>
+      {viewingTeam !== nextBlindTeam && (
+        <p className="blind-explanation" style={{ marginTop: '-0.5rem', opacity: 0.9 }}>
+          You are viewing a hypothetical for {selectedTeamName}; the next blind is {nextBlindTeamName}.
+        </p>
       )}
+      <div className="blind-players-columns">
+        <BlindPlayerColumn
+          teamName={selectedTeamName}
+          scores={selectedTeamScores}
+          numMatches={numMatches}
+          selectedMatches={selectedMatches}
+        />
+      </div>
     </div>
   );
 }

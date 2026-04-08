@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { combinations, extractProbability } from '../utils';
 
 function medianFour(values) {
@@ -145,90 +145,68 @@ function LineupPermutations({
     isTeam1
   ]);
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
   if (!players?.length) {
     return null;
   }
 
   return (
     <div className="lineups-section-container">
-      <h2
-        className="collapsible-header"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-      >
-        <span>Valid Lineups — {teamName}</span>
-        <span
-          style={{
-            fontSize: '1.2rem',
-            transition: 'transform 0.3s ease',
-            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)'
-          }}
-        >
-          ▼
-        </span>
-      </h2>
-      {!isCollapsed && (
-        <>
-          <p className="lineups-explanation">
-            Each row is one set of four players (order does not matter), from those marked available on this team, with total handicap at most{' '}
-            {maxPoints} (league cap).{lockedPlayers.size > 0 && ` Locked players (🔒) appear in every lineup.`} Sorted by average win % (highest first; rows without data last). Handicap is Fargo rating (same as roster).
-            Average win % is the mean win probability over every pairing of a lineup player vs each available opponent (equal weight per pairing); balanced pools tend toward 50%.
-            {rows.length > 0 && (
-              <span className="lineups-explanation-count"> {rows.length} valid lineups</span>
-            )}
-          </p>
+      <p className="lineups-explanation">
+        Each row is one set of four players (order does not matter), from those marked available on this team, with total handicap at most{' '}
+        {maxPoints} (league cap).{lockedPlayers.size > 0 && ` Locked players (🔒) appear in every lineup.`} Sorted by average win % (highest first; rows without data last). Handicap is Fargo rating (same as roster).
+        Average win % is the mean win probability over every pairing of a lineup player vs each available opponent (equal weight per pairing); balanced pools tend toward 50%.
+        {rows.length > 0 && (
+          <span className="lineups-explanation-count"> {rows.length} valid lineups</span>
+        )}
+      </p>
 
-          {notEnoughPlayers && (
-            <p className="no-lineups">Need at least four available players. Adjust availability in the roster above.</p>
-          )}
+      {notEnoughPlayers && (
+        <p className="no-lineups">Need at least four available players. Adjust availability in the roster above.</p>
+      )}
 
-          {!notEnoughPlayers && rows.length === 0 && (
-            <p className="no-lineups">
-              No valid lineups: every four-player combination from the available roster exceeds {maxPoints} total handicap.
-            </p>
-          )}
+      {!notEnoughPlayers && rows.length === 0 && (
+        <p className="no-lineups">
+          No valid lineups: every four-player combination from the available roster exceeds {maxPoints} total handicap.
+        </p>
+      )}
 
-          {!notEnoughPlayers && rows.length > 0 && (
-            <div className="lineups-table-outer">
-              <div className="table-wrapper">
-                <table className="matchup-table lineups-table">
-                  <thead>
-                    <tr>
-                      <th className="lineups-col-num" scope="col">#</th>
-                      <th className="lineups-col-players" scope="col">Players</th>
-                      <th className="lineups-col-stat" scope="col">Total handicap</th>
-                      <th className="lineups-col-stat" scope="col">Median handicap</th>
-                      <th className="lineups-col-stat" scope="col">Avg win %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, idx) => (
-                      <tr key={row.key}>
-                        <td className="lineups-col-num">{idx + 1}</td>
-                        <td className="lineups-col-players">
-                          {row.players.map((p, i) => (
-                            <span key={i} className="lineups-player-chip">
-                              {p.name}{' '}
-                              <span className="lineups-player-rating">({p.rating})</span>
-                              {i < 3 ? ', ' : ''}
-                            </span>
-                          ))}
-                        </td>
-                        <td className="lineups-col-stat">{row.total}</td>
-                        <td className="lineups-col-stat">{row.median.toFixed(1)}</td>
-                        <td className="lineups-col-stat">
-                          {row.avgWinPct !== null ? `${(row.avgWinPct * 100).toFixed(1)}%` : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </>
+      {!notEnoughPlayers && rows.length > 0 && (
+        <div className="lineups-table-outer">
+          <div className="table-wrapper">
+            <table className="matchup-table lineups-table">
+              <thead>
+                <tr>
+                  <th className="lineups-col-num" scope="col">#</th>
+                  <th className="lineups-col-players" scope="col">Players</th>
+                  <th className="lineups-col-stat" scope="col">Total handicap</th>
+                  <th className="lineups-col-stat" scope="col">Median handicap</th>
+                  <th className="lineups-col-stat" scope="col">Avg win %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => (
+                  <tr key={row.key}>
+                    <td className="lineups-col-num">{idx + 1}</td>
+                    <td className="lineups-col-players">
+                      {row.players.map((p, i) => (
+                        <span key={i} className="lineups-player-chip">
+                          {p.name}{' '}
+                          <span className="lineups-player-rating">({p.rating})</span>
+                          {i < 3 ? ', ' : ''}
+                        </span>
+                      ))}
+                    </td>
+                    <td className="lineups-col-stat">{row.total}</td>
+                    <td className="lineups-col-stat">{row.median.toFixed(1)}</td>
+                    <td className="lineups-col-stat">
+                      {row.avgWinPct !== null ? `${(row.avgWinPct * 100).toFixed(1)}%` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

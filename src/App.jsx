@@ -205,6 +205,7 @@ function App() {
   const [lockedTeam1Players, setLockedTeam1Players] = useState(new Set());
   const [lockedTeam2Players, setLockedTeam2Players] = useState(new Set());
   const [selectedTeam, setSelectedTeam] = useState('home'); // 'home' or 'away'
+  const [activeTab, setActiveTab] = useState('predicted'); // 'roster' | 'grid' | 'predicted' | 'blind' | 'lineups'
   const [highlightedRow, setHighlightedRow] = useState(null); // team1 player index
   const [highlightedColumn, setHighlightedColumn] = useState(null); // team2 player index
 
@@ -577,7 +578,6 @@ function App() {
                   setLockedTeam1Players(new Set());
                   setLockedTeam2Players(new Set());
                   setSelectedTeam('home');
-                  // Keep divisionId and matches so user can select another match
                   const params = new URLSearchParams(window.location.search);
                   params.delete('matchId');
                   window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
@@ -604,193 +604,181 @@ function App() {
         )}
 
         {data && (
-          <>
-            <div className="player-availability-container">
-              <RosterList
-                teamName={data.team1Name}
-                players={data.team1Players}
-                availablePlayers={availableTeam1Players}
-                lockedPlayers={lockedTeam1Players}
-                onAvailabilityChange={(newAvailable, newLocked) => {
-                  setAvailableTeam1Players(newAvailable);
-                  setLockedTeam1Players(newLocked);
-                  saveToCache(matchId, 'lockedTeam1Players', newLocked);
-                }}
-                matchId={matchId}
-                selectedMatches={selectedMatches}
-                teamType="team1"
-                saveToCache={saveToCache}
-                onSelectedMatchesChange={(filtered) => {
-                  setSelectedMatches(filtered);
-                  saveToCache(matchId, 'selectedMatches', filtered);
-                }}
-              />
-              <RosterList
-                teamName={data.team2Name}
-                players={data.team2Players}
-                availablePlayers={availableTeam2Players}
-                lockedPlayers={lockedTeam2Players}
-                onAvailabilityChange={(newAvailable, newLocked) => {
-                  setAvailableTeam2Players(newAvailable);
-                  setLockedTeam2Players(newLocked);
-                  saveToCache(matchId, 'lockedTeam2Players', newLocked);
-                }}
-                matchId={matchId}
-                selectedMatches={selectedMatches}
-                teamType="team2"
-                saveToCache={saveToCache}
-                onSelectedMatchesChange={(filtered) => {
-                  setSelectedMatches(filtered);
-                  saveToCache(matchId, 'selectedMatches', filtered);
-                }}
-              />
-            </div>
-            <MatchupGrid
-              data={data}
-              selectedMatches={selectedMatches}
-              onMatchSelect={(matches) => {
-                setSelectedMatches(matches);
-                saveToCache(matchId, 'selectedMatches', matches);
-              }}
-              availableTeam1Players={availableTeam1Players}
-              availableTeam2Players={availableTeam2Players}
-              lockedTeam1Players={lockedTeam1Players}
-              lockedTeam2Players={lockedTeam2Players}
-              onHighlightChange={(row, column) => {
-                setHighlightedRow(row);
-                setHighlightedColumn(column);
-              }}
-            />
-            <div className="team-selector-container" style={{ marginBottom: '30px', marginTop: '30px', padding: '20px 0', display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <div
-                className="team-toggle-slider"
-                onClick={() => {
-                  const newTeam = selectedTeam === 'home' ? 'away' : 'home';
-                  setSelectedTeam(newTeam);
-                  saveToCache(matchId, 'selectedTeam', newTeam);
-                }}
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  maxWidth: '500px',
-                  height: '60px',
-                  backgroundColor: '#e0e0e0',
-                  borderRadius: '30px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                  overflow: 'hidden'
-                }}
+          <div className="analysis-tabs-container">
+            <div className="analysis-tabs-header">
+              <button
+                className={`analysis-tab-btn${activeTab === 'roster' ? ' analysis-tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('roster')}
               >
+                Roster
+              </button>
+              <button
+                className={`analysis-tab-btn${activeTab === 'grid' ? ' analysis-tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('grid')}
+              >
+                Grid
+              </button>
+              <button
+                className={`analysis-tab-btn${activeTab === 'predicted' ? ' analysis-tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('predicted')}
+              >
+                Predicted
+              </button>
+              <button
+                className={`analysis-tab-btn${activeTab === 'blind' ? ' analysis-tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('blind')}
+              >
+                Blind Throws
+              </button>
+              <button
+                className={`analysis-tab-btn${activeTab === 'lineups' ? ' analysis-tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('lineups')}
+              >
+                Valid Lineups
+              </button>
+            </div>
+
+            {/* Team toggle — shown for Blind Throws and Valid Lineups tabs */}
+            {(activeTab === 'blind' || activeTab === 'lineups') && (
+              <div className="team-selector-container">
                 <div
-                  style={{
-                    position: 'absolute',
-                    left: selectedTeam === 'home' ? '0' : '50%',
-                    width: '50%',
-                    height: '100%',
-                    backgroundColor: selectedTeam === 'home' ? '#667eea' : '#764ba2',
-                    borderRadius: '30px',
-                    transition: 'left 0.3s ease',
-                    zIndex: 0
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '0',
-                    width: '50%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1
-                  }}
-                >
-                  <span
-                    style={{
-                      color: selectedTeam === 'home' ? 'white' : '#666',
-                      fontWeight: selectedTeam === 'home' ? 700 : 500,
-                      fontSize: '1.1rem',
-                      userSelect: 'none',
-                      pointerEvents: 'none',
-                      transition: 'color 0.3s ease, font-weight 0.3s ease'
-                    }}
-                  >
-                    {data.team1Name}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: '0',
-                    width: '50%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1
+                  className="team-toggle-slider"
+                  onClick={() => {
+                    const newTeam = selectedTeam === 'home' ? 'away' : 'home';
+                    setSelectedTeam(newTeam);
+                    saveToCache(matchId, 'selectedTeam', newTeam);
                   }}
                 >
-                  <span
-                    style={{
-                      color: selectedTeam === 'away' ? 'white' : '#666',
-                      fontWeight: selectedTeam === 'away' ? 700 : 500,
-                      fontSize: '1.1rem',
-                      userSelect: 'none',
-                      pointerEvents: 'none',
-                      transition: 'color 0.3s ease, font-weight 0.3s ease'
-                    }}
-                  >
-                    {data.team2Name}
-                  </span>
+                  <div
+                    className="team-toggle-knob"
+                    style={{ left: selectedTeam === 'home' ? '0' : '50%', backgroundColor: selectedTeam === 'home' ? '#667eea' : '#764ba2' }}
+                  />
+                  <div className="team-toggle-label team-toggle-label--left">
+                    <span style={{ color: selectedTeam === 'home' ? 'white' : '#666', fontWeight: selectedTeam === 'home' ? 700 : 500 }}>
+                      {data.team1Name}
+                    </span>
+                  </div>
+                  <div className="team-toggle-label team-toggle-label--right">
+                    <span style={{ color: selectedTeam === 'away' ? 'white' : '#666', fontWeight: selectedTeam === 'away' ? 700 : 500 }}>
+                      {data.team2Name}
+                    </span>
+                  </div>
                 </div>
               </div>
+            )}
+
+            <div className="analysis-tab-panel">
+              {activeTab === 'roster' && (
+                <div className="player-availability-container">
+                  <RosterList
+                    teamName={data.team1Name}
+                    players={data.team1Players}
+                    availablePlayers={availableTeam1Players}
+                    lockedPlayers={lockedTeam1Players}
+                    onAvailabilityChange={(newAvailable, newLocked) => {
+                      setAvailableTeam1Players(newAvailable);
+                      setLockedTeam1Players(newLocked);
+                      saveToCache(matchId, 'lockedTeam1Players', newLocked);
+                    }}
+                    matchId={matchId}
+                    selectedMatches={selectedMatches}
+                    teamType="team1"
+                    saveToCache={saveToCache}
+                    onSelectedMatchesChange={(filtered) => {
+                      setSelectedMatches(filtered);
+                      saveToCache(matchId, 'selectedMatches', filtered);
+                    }}
+                  />
+                  <RosterList
+                    teamName={data.team2Name}
+                    players={data.team2Players}
+                    availablePlayers={availableTeam2Players}
+                    lockedPlayers={lockedTeam2Players}
+                    onAvailabilityChange={(newAvailable, newLocked) => {
+                      setAvailableTeam2Players(newAvailable);
+                      setLockedTeam2Players(newLocked);
+                      saveToCache(matchId, 'lockedTeam2Players', newLocked);
+                    }}
+                    matchId={matchId}
+                    selectedMatches={selectedMatches}
+                    teamType="team2"
+                    saveToCache={saveToCache}
+                    onSelectedMatchesChange={(filtered) => {
+                      setSelectedMatches(filtered);
+                      saveToCache(matchId, 'selectedMatches', filtered);
+                    }}
+                  />
+                </div>
+              )}
+              {activeTab === 'grid' && (
+                <MatchupGrid
+                  data={data}
+                  selectedMatches={selectedMatches}
+                  onMatchSelect={(matches) => {
+                    setSelectedMatches(matches);
+                    saveToCache(matchId, 'selectedMatches', matches);
+                  }}
+                  availableTeam1Players={availableTeam1Players}
+                  availableTeam2Players={availableTeam2Players}
+                  lockedTeam1Players={lockedTeam1Players}
+                  lockedTeam2Players={lockedTeam2Players}
+                  onHighlightChange={(row, column) => {
+                    setHighlightedRow(row);
+                    setHighlightedColumn(column);
+                  }}
+                />
+              )}
+              {activeTab === 'predicted' && (
+                <PredictedMatchups
+                  team1Name={data.team1Name}
+                  team2Name={data.team2Name}
+                  team1Players={data.team1Players}
+                  team2Players={data.team2Players}
+                  matchupData={data.matchupData}
+                  selectedMatches={selectedMatches}
+                  availableTeam1Players={availableTeam1Players}
+                  availableTeam2Players={availableTeam2Players}
+                  lockedTeam1Players={lockedTeam1Players}
+                  lockedTeam2Players={lockedTeam2Players}
+                  highlightedRow={highlightedRow}
+                  highlightedColumn={highlightedColumn}
+                  lockedOpponentTeam1Index={lockedOpponentTeam1Index}
+                  lockedOpponentTeam2Index={lockedOpponentTeam2Index}
+                />
+              )}
+              {activeTab === 'blind' && (
+                <BlindPlayerSelector
+                  team1Name={data.team1Name}
+                  team2Name={data.team2Name}
+                  team1Players={data.team1Players}
+                  team2Players={data.team2Players}
+                  matchupData={data.matchupData}
+                  selectedMatches={selectedMatches}
+                  availableTeam1Players={availableTeam1Players}
+                  availableTeam2Players={availableTeam2Players}
+                  lockedTeam1Players={lockedTeam1Players}
+                  lockedTeam2Players={lockedTeam2Players}
+                  selectedTeam={selectedTeam}
+                  lockedOpponentTeam1Index={lockedOpponentTeam1Index}
+                  lockedOpponentTeam2Index={lockedOpponentTeam2Index}
+                />
+              )}
+              {activeTab === 'lineups' && (
+                <LineupPermutations
+                  teamName={selectedTeam === 'home' ? data.team1Name : data.team2Name}
+                  players={selectedTeam === 'home' ? data.team1Players : data.team2Players}
+                  availablePlayers={selectedTeam === 'home' ? availableTeam1Players : availableTeam2Players}
+                  lockedPlayers={selectedTeam === 'home' ? lockedTeam1Players : lockedTeam2Players}
+                  matchupData={data.matchupData}
+                  opponentPlayers={selectedTeam === 'home' ? data.team2Players : data.team1Players}
+                  opponentAvailablePlayers={selectedTeam === 'home' ? availableTeam2Players : availableTeam1Players}
+                  isTeam1={selectedTeam === 'home'}
+                />
+              )}
             </div>
-            <PredictedMatchups
-              team1Name={data.team1Name}
-              team2Name={data.team2Name}
-              team1Players={data.team1Players}
-              team2Players={data.team2Players}
-              matchupData={data.matchupData}
-              selectedMatches={selectedMatches}
-              availableTeam1Players={availableTeam1Players}
-              availableTeam2Players={availableTeam2Players}
-              lockedTeam1Players={lockedTeam1Players}
-              lockedTeam2Players={lockedTeam2Players}
-              highlightedRow={highlightedRow}
-              highlightedColumn={highlightedColumn}
-              lockedOpponentTeam1Index={lockedOpponentTeam1Index}
-              lockedOpponentTeam2Index={lockedOpponentTeam2Index}
-            />
-            <BlindPlayerSelector
-              team1Name={data.team1Name}
-              team2Name={data.team2Name}
-              team1Players={data.team1Players}
-              team2Players={data.team2Players}
-              matchupData={data.matchupData}
-              selectedMatches={selectedMatches}
-              availableTeam1Players={availableTeam1Players}
-              availableTeam2Players={availableTeam2Players}
-              lockedTeam1Players={lockedTeam1Players}
-              lockedTeam2Players={lockedTeam2Players}
-              selectedTeam={selectedTeam}
-              lockedOpponentTeam1Index={lockedOpponentTeam1Index}
-              lockedOpponentTeam2Index={lockedOpponentTeam2Index}
-            />
-            <LineupPermutations
-              teamName={selectedTeam === 'home' ? data.team1Name : data.team2Name}
-              players={selectedTeam === 'home' ? data.team1Players : data.team2Players}
-              availablePlayers={selectedTeam === 'home' ? availableTeam1Players : availableTeam2Players}
-              lockedPlayers={selectedTeam === 'home' ? lockedTeam1Players : lockedTeam2Players}
-              matchupData={data.matchupData}
-              opponentPlayers={selectedTeam === 'home' ? data.team2Players : data.team1Players}
-              opponentAvailablePlayers={selectedTeam === 'home' ? availableTeam2Players : availableTeam1Players}
-              isTeam1={selectedTeam === 'home'}
-            />
-          </>
+          </div>
         )}
+
       </div>
     </div>
   );

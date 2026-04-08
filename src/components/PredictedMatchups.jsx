@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { extractProbability, combinations, permutations } from '../utils';
 import { getBlindPlayerScores } from '../blindThrowRankings';
 
@@ -504,12 +504,9 @@ function PredictedMatchups({
     return predicted;
   }, [team1Players, team2Players, matchupData, maxPoints, numMatches, selectedMatches, availableTeam1Players, availableTeam2Players, lockedTeam1Players, lockedTeam2Players, team1Name, team2Name, highlightedRow, highlightedColumn, lockedOpponentTeam1Index, lockedOpponentTeam2Index]);
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
   if (!team1Players || !team2Players || !matchupData) {
     return (
       <div className="predicted-matchups-container">
-        <h2>Predicted Matchups</h2>
         <p className="no-predictions">Waiting for matchup data...</p>
       </div>
     );
@@ -519,44 +516,20 @@ function PredictedMatchups({
   if ((!predictedMatchups || predictedMatchups.length === 0) && (!selectedMatches || selectedMatches.length === 0)) {
     return (
       <div className="predicted-matchups-container">
-        <h2
-          className="collapsible-header"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <span>Predicted Matchups</span>
-          <span style={{ fontSize: '1.2rem', transition: 'transform 0.3s ease', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}>
-            ▼
-          </span>
-        </h2>
-        {!isCollapsed && (
-          <p className="no-predictions">
-            Unable to predict matchups. No valid picks are available.
-          </p>
-        )}
+        <p className="no-predictions">
+          Unable to predict matchups. No valid picks are available.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="predicted-matchups-container">
-      <h2
-        className="collapsible-header"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-      >
-        <span>Predicted Matchups</span>
-        <span style={{ fontSize: '1.2rem', transition: 'transform 0.3s ease', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}>
-          ▼
-        </span>
-      </h2>
-      {!isCollapsed && (
-        <>
-          <p className="prediction-explanation">
-            Predicted sequence of matchups assuming alternating blind picks. Away team ALWAYS throws blind first, then Home team, then alternating (Away → Home → Away → Home).
-            The next matchup uses your highlighted roster player as the blind pick when that player is on the team throwing blind; otherwise it matches the #1 Best Blind Throw (same ranking and counter-pick rules). Later predicted matches maximize overall night win probability with optimal counter-picks.
-          </p>
-          {((predictedMatchups && predictedMatchups.length > 0) || (selectedMatches && selectedMatches.length > 0)) && (() => {
+      <p className="prediction-explanation">
+        Predicted sequence of matchups assuming alternating blind picks. Away team ALWAYS throws blind first, then Home team, then alternating (Away → Home → Away → Home).
+        The next matchup uses your highlighted roster player as the blind pick when that player is on the team throwing blind; otherwise it matches the #1 Best Blind Throw (same ranking and counter-pick rules). Later predicted matches maximize overall night win probability with optimal counter-picks.
+      </p>
+      {((predictedMatchups && predictedMatchups.length > 0) || (selectedMatches && selectedMatches.length > 0)) && (() => {
             // Calculate win probabilities for selected matches
             let selectedTeam1WinProb = 0;
             let selectedTeam2WinProb = 0;
@@ -734,8 +707,6 @@ function PredictedMatchups({
               );
             })}
           </div>
-        </>
-      )}
     </div>
   );
 }
