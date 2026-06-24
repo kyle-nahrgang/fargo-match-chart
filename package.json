@@ -7,6 +7,8 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "node server.js",
     "dev:client": "vite",
+    "generate-icons": "node scripts/generate-pwa-icons.mjs",
+    "prebuild": "npm run generate-icons",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js"
@@ -31,6 +33,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",
     "date-fns": "^2.30.0",
+    "sharp": "^0.33.5",
     "vite": "^5.0.8"
   }
 }
