@@ -189,6 +189,13 @@ const loadRecentMatch = (divisionId) => {
   }
 };
 
+const buildMatchShareUrl = (divisionId, matchId) => {
+  const params = new URLSearchParams();
+  params.set('divisionId', divisionId);
+  params.set('matchId', matchId);
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+};
+
 const ACTIVE_TAB_STORAGE_KEY = 'fargo_active_tab';
 /** Legacy key from before rename; still read once for migration. */
 const LEGACY_ACTIVE_TAB_STORAGE_KEY = 'fargo_analysis_active_tab';
@@ -225,6 +232,7 @@ function App() {
   const [activeTab, setActiveTab] = useState(loadStoredActiveTab); // 'roster' | 'grid' | 'predicted' | 'blind' | 'lineups'
   const [highlightedRow, setHighlightedRow] = useState(null); // team1 player index
   const [highlightedColumn, setHighlightedColumn] = useState(null); // team2 player index
+  const [shareFeedback, setShareFeedback] = useState(null);
 
   useEffect(() => {
     try {
@@ -318,11 +326,6 @@ function App() {
           const matchExists = result.some(m => m.matchId === recentMatchId);
           if (matchExists) {
             setMatchId(recentMatchId);
-            // Update URL with matchId parameter
-            const params = new URLSearchParams(window.location.search);
-            params.set('divisionId', divId.trim());
-            params.set('matchId', recentMatchId);
-            window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
             await fetchMatchData(recentMatchId);
           }
         }
@@ -437,6 +440,40 @@ function App() {
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
 
     await fetchMatchData(selectedMatchId);
+  };
+
+  const handleShareMatch = async () => {
+    if (!divisionId || !matchId) return;
+
+    const shareUrl = buildMatchShareUrl(divisionId, matchId);
+    const shareText = data
+      ? `${data.team1Name} vs ${data.team2Name}`
+      : 'Fargo Matchups';
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Fargo Matchups',
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback('Link copied!');
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareFeedback('Link copied!');
+      } catch {
+        setShareFeedback('Could not copy link');
+      }
+    }
+
+    setTimeout(() => setShareFeedback(null), 2000);
   };
 
   return (
@@ -590,28 +627,41 @@ function App() {
           <div className="match-info">
             <div className="match-id-display">
               <span>Match ID: <strong>{matchId}</strong></span>
-              <button
-                onClick={() => {
-                  if (matchId) {
-                    clearCache(matchId);
-                  }
-                  setData(null);
-                  setMatchId('');
-                  setError(null);
-                  setSelectedMatches([]);
-                  setAvailableTeam1Players(new Set());
-                  setAvailableTeam2Players(new Set());
-                  setLockedTeam1Players(new Set());
-                  setLockedTeam2Players(new Set());
-                  setSelectedTeam('home');
-                  const params = new URLSearchParams(window.location.search);
-                  params.delete('matchId');
-                  window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-                }}
-                className="new-match-btn"
-              >
-                Select Different Match
-              </button>
+              <div className="match-id-actions">
+                <button
+                  onClick={handleShareMatch}
+                  className="share-btn"
+                  type="button"
+                >
+                  Share
+                </button>
+                {shareFeedback && (
+                  <span className="share-feedback" role="status">{shareFeedback}</span>
+                )}
+                <button
+                  onClick={() => {
+                    if (matchId) {
+                      clearCache(matchId);
+                    }
+                    setData(null);
+                    setMatchId('');
+                    setError(null);
+                    setSelectedMatches([]);
+                    setAvailableTeam1Players(new Set());
+                    setAvailableTeam2Players(new Set());
+                    setLockedTeam1Players(new Set());
+                    setLockedTeam2Players(new Set());
+                    setSelectedTeam('home');
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('matchId');
+                    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                  }}
+                  className="new-match-btn"
+                  type="button"
+                >
+                  Select Different Match
+                </button>
+              </div>
             </div>
           </div>
         )}

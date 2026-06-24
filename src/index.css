@@ -177,6 +177,14 @@ code {
   font-weight: 700;
 }
 
+.match-id-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.share-btn,
 .new-match-btn {
   padding: 10px 20px;
   background: white;
@@ -189,11 +197,27 @@ code {
   transition: all 0.2s;
 }
 
+.share-btn {
+  background: #667eea;
+  color: white;
+}
+
+.share-btn:hover,
 .new-match-btn:hover {
   background: #667eea;
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.share-btn:hover {
+  background: #5568d3;
+}
+
+.share-feedback {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2f855a;
 }
 
 .loading-spinner-container {
