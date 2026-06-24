@@ -4,7 +4,7 @@ import BlindPlayerSelector from './components/BlindPlayerSelector';
 import LineupPermutations from './components/LineupPermutations';
 import PredictedMatchups from './components/PredictedMatchups';
 import RosterList from './components/RosterList';
-import { storageRemove, storageSet } from './storage';
+import { LAST_DIVISION_KEY, storageGet, storageRemove, storageSet } from './storage';
 
 const DEFAULT_DIVISION_ID = 'c3012308-61dc-4ca5-b304-b3a00150a4f9';
 
@@ -126,10 +126,10 @@ const LOCKED_PLAYER_KEYS = new Set([
   'lockedTeam2Players',
 ]);
 
-const loadFromCache = (matchId, key, defaultValue) => {
+const loadFromCache = async (matchId, key, defaultValue) => {
   if (!matchId) return defaultValue;
   try {
-    const cached = localStorage.getItem(getCacheKey(matchId, key));
+    const cached = await storageGet(getCacheKey(matchId, key));
     if (cached) {
       const parsed = JSON.parse(cached);
       if (LOCKED_PLAYER_KEYS.has(key)) {
@@ -167,14 +167,28 @@ const saveRecentMatch = (divisionId, matchId) => {
   storageSet(getRecentMatchKey(divisionId), matchId);
 };
 
-const loadRecentMatch = (divisionId) => {
+const loadRecentMatch = async (divisionId) => {
   if (!divisionId) return null;
   try {
-    return localStorage.getItem(getRecentMatchKey(divisionId));
+    return await storageGet(getRecentMatchKey(divisionId));
   } catch (error) {
     console.warn(`Failed to load recent match for division ${divisionId}:`, error);
     return null;
   }
+};
+
+const loadStoredDivisionId = async () => {
+  try {
+    return await storageGet(LAST_DIVISION_KEY);
+  } catch (error) {
+    console.warn('Failed to load stored division:', error);
+    return null;
+  }
+};
+
+const saveStoredDivisionId = (divisionId) => {
+  if (!divisionId) return;
+  storageSet(LAST_DIVISION_KEY, divisionId);
 };
 
 const buildMatchShareUrl = (divisionId, matchId) => {
@@ -189,11 +203,11 @@ const ACTIVE_TAB_STORAGE_KEY = 'fargo_active_tab';
 const LEGACY_ACTIVE_TAB_STORAGE_KEY = 'fargo_analysis_active_tab';
 const VALID_ACTIVE_TABS = new Set(['roster', 'grid', 'predicted', 'blind', 'lineups']);
 
-const loadStoredActiveTab = () => {
+const loadStoredActiveTab = async () => {
   try {
     const raw =
-      localStorage.getItem(ACTIVE_TAB_STORAGE_KEY) ||
-      localStorage.getItem(LEGACY_ACTIVE_TAB_STORAGE_KEY);
+      (await storageGet(ACTIVE_TAB_STORAGE_KEY)) ||
+      (await storageGet(LEGACY_ACTIVE_TAB_STORAGE_KEY));
     if (raw && VALID_ACTIVE_TABS.has(raw)) return raw;
   } catch (error) {
     console.warn('Failed to load stored active tab:', error);
@@ -217,15 +231,26 @@ function App() {
   const [lockedTeam1Players, setLockedTeam1Players] = useState(new Set());
   const [lockedTeam2Players, setLockedTeam2Players] = useState(new Set());
   const [selectedTeam, setSelectedTeam] = useState('home'); // 'home' or 'away'
-  const [activeTab, setActiveTab] = useState(loadStoredActiveTab); // 'roster' | 'grid' | 'predicted' | 'blind' | 'lineups'
+  const [activeTab, setActiveTab] = useState('roster');
+  const [activeTabLoaded, setActiveTabLoaded] = useState(false);
   const [highlightedRow, setHighlightedRow] = useState(null); // team1 player index
   const [highlightedColumn, setHighlightedColumn] = useState(null); // team2 player index
   const [shareFeedback, setShareFeedback] = useState(null);
 
   useEffect(() => {
+    loadStoredActiveTab().then((tab) => {
+      setActiveTab(tab);
+      setActiveTabLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!activeTabLoaded) {
+      return;
+    }
     storageSet(ACTIVE_TAB_STORAGE_KEY, activeTab);
     storageRemove(LEGACY_ACTIVE_TAB_STORAGE_KEY);
-  }, [activeTab]);
+  }, [activeTab, activeTabLoaded]);
 
   const lockedOpponentTeam1Index = useMemo(() => {
     const hasTeam1PlayerSelectedMatch = highlightedRow !== null &&
@@ -253,17 +278,19 @@ function App() {
       const params = new URLSearchParams(window.location.search);
       const urlDivisionId = params.get('divisionId');
       const urlMatchId = params.get('matchId');
+      const storedDivisionId = await loadStoredDivisionId();
 
-      // Use URL divisionId if present, otherwise use default
-      const finalDivisionId = urlDivisionId || DEFAULT_DIVISION_ID;
+      // Use URL divisionId, then stored division, then default
+      const finalDivisionId = urlDivisionId || storedDivisionId || DEFAULT_DIVISION_ID;
       setDivisionId(finalDivisionId);
+      saveStoredDivisionId(finalDivisionId);
 
       if (urlMatchId) {
         // If matchId is in URL, use it directly and save as recent match
         setMatchId(urlMatchId);
         saveRecentMatch(finalDivisionId, urlMatchId);
         await fetchDivisionSchedule(finalDivisionId, false, urlMatchId);
-        await fetchMatchData(urlMatchId);
+        await fetchMatchData(urlMatchId, finalDivisionId);
       } else {
         // If no matchId in URL, try to auto-load recent match
         await fetchDivisionSchedule(finalDivisionId, true, null);
@@ -304,13 +331,14 @@ function App() {
 
       // If auto-loading recent match and no matchId is set, try to load the cached recent match
       if (autoLoadRecent && !currentMatchId) {
-        const recentMatchId = loadRecentMatch(divId.trim());
+        const recentMatchId = await loadRecentMatch(divId.trim());
         if (recentMatchId) {
           // Verify the match still exists in the schedule
           const matchExists = result.some(m => m.matchId === recentMatchId);
           if (matchExists) {
             setMatchId(recentMatchId);
-            await fetchMatchData(recentMatchId);
+            saveRecentMatch(divId.trim(), recentMatchId);
+            await fetchMatchData(recentMatchId, divId.trim());
           }
         }
       }
@@ -329,7 +357,7 @@ function App() {
     }
   };
 
-  const fetchMatchData = async (id) => {
+  const fetchMatchData = async (id, divId = divisionId) => {
     if (!id || !id.trim()) {
       return;
     }
@@ -344,20 +372,20 @@ function App() {
       setData(result);
 
       // Try to load from cache, otherwise initialize all players as available
-      const cachedAvailableTeam1 = loadFromCache(
+      const cachedAvailableTeam1 = await loadFromCache(
         id.trim(),
         'availableTeam1Players',
         new Set(result.team1Players.map((_, idx) => idx))
       );
-      const cachedAvailableTeam2 = loadFromCache(
+      const cachedAvailableTeam2 = await loadFromCache(
         id.trim(),
         'availableTeam2Players',
         new Set(result.team2Players.map((_, idx) => idx))
       );
-      const cachedLockedTeam1 = loadFromCache(id.trim(), 'lockedTeam1Players', new Set());
-      const cachedLockedTeam2 = loadFromCache(id.trim(), 'lockedTeam2Players', new Set());
-      const cachedSelectedMatches = loadFromCache(id.trim(), 'selectedMatches', []);
-      const cachedSelectedTeam = loadFromCache(id.trim(), 'selectedTeam', 'home');
+      const cachedLockedTeam1 = await loadFromCache(id.trim(), 'lockedTeam1Players', new Set());
+      const cachedLockedTeam2 = await loadFromCache(id.trim(), 'lockedTeam2Players', new Set());
+      const cachedSelectedMatches = await loadFromCache(id.trim(), 'selectedMatches', []);
+      const cachedSelectedTeam = await loadFromCache(id.trim(), 'selectedTeam', 'home');
 
       setAvailableTeam1Players(cachedAvailableTeam1);
       setAvailableTeam2Players(cachedAvailableTeam2);
@@ -365,6 +393,8 @@ function App() {
       setLockedTeam2Players(cachedLockedTeam2);
       setSelectedMatches(cachedSelectedMatches);
       setSelectedTeam(cachedSelectedTeam);
+      saveRecentMatch(divId, id.trim());
+      saveStoredDivisionId(divId);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -378,6 +408,7 @@ function App() {
     }
 
     setDivisionId(selectedDivisionId);
+    saveStoredDivisionId(selectedDivisionId);
 
     // Update URL with divisionId parameter
     const params = new URLSearchParams(window.location.search);
@@ -423,7 +454,7 @@ function App() {
     params.set('matchId', selectedMatchId);
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
 
-    await fetchMatchData(selectedMatchId);
+    await fetchMatchData(selectedMatchId, divisionId);
   };
 
   const handleShareMatch = async () => {
