@@ -4,6 +4,7 @@ import BlindPlayerSelector from './components/BlindPlayerSelector';
 import LineupPermutations from './components/LineupPermutations';
 import PredictedMatchups from './components/PredictedMatchups';
 import RosterList from './components/RosterList';
+import { storageRemove, storageSet } from './storage';
 
 const DEFAULT_DIVISION_ID = 'c3012308-61dc-4ca5-b304-b3a00150a4f9';
 
@@ -144,27 +145,18 @@ const loadFromCache = (matchId, key, defaultValue) => {
 
 const saveToCache = (matchId, key, value) => {
   if (!matchId) return;
-  try {
-    // Convert Sets to arrays for storage
-    const toStore = value instanceof Set ? Array.from(value) : value;
-    localStorage.setItem(getCacheKey(matchId, key), JSON.stringify(toStore));
-  } catch (error) {
-    console.warn(`Failed to save cache for ${key}:`, error);
-  }
+  const toStore = value instanceof Set ? Array.from(value) : value;
+  storageSet(getCacheKey(matchId, key), toStore);
 };
 
 const clearCache = (matchId) => {
   if (!matchId) return;
-  try {
-    localStorage.removeItem(getCacheKey(matchId, 'availableTeam1Players'));
-    localStorage.removeItem(getCacheKey(matchId, 'availableTeam2Players'));
-    localStorage.removeItem(getCacheKey(matchId, 'lockedTeam1Players'));
-    localStorage.removeItem(getCacheKey(matchId, 'lockedTeam2Players'));
-    localStorage.removeItem(getCacheKey(matchId, 'selectedMatches'));
-    localStorage.removeItem(getCacheKey(matchId, 'selectedTeam'));
-  } catch (error) {
-    console.warn(`Failed to clear cache for match ${matchId}:`, error);
-  }
+  storageRemove(getCacheKey(matchId, 'availableTeam1Players'));
+  storageRemove(getCacheKey(matchId, 'availableTeam2Players'));
+  storageRemove(getCacheKey(matchId, 'lockedTeam1Players'));
+  storageRemove(getCacheKey(matchId, 'lockedTeam2Players'));
+  storageRemove(getCacheKey(matchId, 'selectedMatches'));
+  storageRemove(getCacheKey(matchId, 'selectedTeam'));
 };
 
 // Helper functions for storing most recent match per division
@@ -172,11 +164,7 @@ const getRecentMatchKey = (divisionId) => `fargo_recent_match_${divisionId}`;
 
 const saveRecentMatch = (divisionId, matchId) => {
   if (!divisionId || !matchId) return;
-  try {
-    localStorage.setItem(getRecentMatchKey(divisionId), matchId);
-  } catch (error) {
-    console.warn(`Failed to save recent match for division ${divisionId}:`, error);
-  }
+  storageSet(getRecentMatchKey(divisionId), matchId);
 };
 
 const loadRecentMatch = (divisionId) => {
@@ -235,12 +223,8 @@ function App() {
   const [shareFeedback, setShareFeedback] = useState(null);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
-      localStorage.removeItem(LEGACY_ACTIVE_TAB_STORAGE_KEY);
-    } catch (error) {
-      console.warn('Failed to persist active tab:', error);
-    }
+    storageSet(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    storageRemove(LEGACY_ACTIVE_TAB_STORAGE_KEY);
   }, [activeTab]);
 
   const lockedOpponentTeam1Index = useMemo(() => {

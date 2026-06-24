@@ -8,7 +8,8 @@
     "dev:server": "node server.js",
     "dev:client": "vite",
     "generate-icons": "node scripts/generate-pwa-icons.mjs",
-    "prebuild": "npm run generate-icons",
+    "generate-manifest": "node scripts/generate-manifest.mjs",
+    "prebuild": "npm run generate-icons && npm run generate-manifest",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js"

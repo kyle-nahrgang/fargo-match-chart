@@ -2,14 +2,18 @@
   "name": "Fargo Matchups",
   "short_name": "Fargo",
   "description": "Calculate race lengths and odds for all player matchups in a FargoRate match.",
-  "start_url": "./",
-  "scope": "./",
+  "id": "/fargo-match-chart/",
+  "start_url": "/fargo-match-chart/",
+  "scope": "/fargo-match-chart/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#667eea",
   "theme_color": "#667eea",
   "lang": "en-US",
-  "categories": ["sports", "utilities"],
+  "categories": [
+    "sports",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
