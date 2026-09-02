@@ -6,7 +6,11 @@
 import axios from 'axios';
 
 const API_BASE_URL = 'https://lms.fargorate.com/api';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
 const LEAGUE_ID = '570cec8b-dc44-4bfa-a103-b317012291b1';
+const IS_GITHUB_PAGES = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
+const USE_BACKEND = Boolean(BACKEND_URL) || import.meta.env.DEV || !IS_GITHUB_PAGES;
+const backendUrl = (path) => `${BACKEND_URL}${path}`;
 
 // https://lms.fargorate.com/api/leagues/570cec8b-dc44-4bfa-a103-b317012291b1/divisions
 
@@ -15,7 +19,9 @@ const LEAGUE_ID = '570cec8b-dc44-4bfa-a103-b317012291b1';
  */
 export async function getDivisions() {
   try {
-    const url = `${API_BASE_URL}/leagues/${LEAGUE_ID}/divisions`;
+    const url = USE_BACKEND
+      ? backendUrl('/api/divisions')
+      : `${API_BASE_URL}/leagues/${LEAGUE_ID}/divisions`;
     const response = await axios.get(url);
     // Check if response is actually JSON (not HTML error page)
     if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
@@ -116,6 +122,13 @@ export function getPlayerRobustness(player) {
  */
 export async function getDivisionSchedule(divisionId) {
   const targetUrl = 'https://lms.fargorate.com/PublicReport/GenerateDivisionScheduleReport';
+
+  // Use the local Express proxy during development. Static hosting cannot
+  // reliably proxy this POST request because FargoRate blocks public proxies.
+  if (USE_BACKEND) {
+    const response = await axios.post(backendUrl('/api/division-schedule'), { divisionId });
+    return response.data;
+  }
 
   // Helper function to try a proxy and parse the response
   const tryProxy = async (proxyName, makeRequest) => {
@@ -315,6 +328,11 @@ export async function getDivisionSchedule(divisionId) {
  * Get matchup data for a match ID (client-side version)
  */
 export async function getMatchupData(matchId) {
+  if (USE_BACKEND) {
+    const response = await axios.get(backendUrl(`/api/matchups/${encodeURIComponent(matchId)}`));
+    return response.data;
+  }
+
   const match = await getMatch(matchId);
 
   const team1Id = match.teamOneId;

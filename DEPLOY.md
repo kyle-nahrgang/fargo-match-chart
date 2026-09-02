@@ -2,10 +2,11 @@
 
 ## Setup
 
-1. Push to the `main` branch (or run the **Deploy to GitHub Pages** workflow manually).
-2. In **Settings → Pages → Build and deployment**, set Source to **GitHub Actions**.
+Deploy this repository as one Node web service. Render is configured by [render.yaml](render.yaml): it builds the React app and runs the Express server from the same deployment.
 
-The workflow builds on every push to `main` and publishes the `dist/` output to GitHub Pages.
+1. Create a new Render Web Service from this GitHub repository.
+2. Use the included `render.yaml`, or set the build command to `npm ci && npm run build` and the start command to `npm start`.
+3. Open the URL provided by Render. No `VITE_BACKEND_URL` variable is needed because the frontend and backend share the same origin.
 
 ## Local development
 
@@ -20,4 +21,4 @@ npm run build
 npm run preview
 ```
 
-The app is served at `https://kyle-nahrgang.github.io/fargo-match-chart/` with assets under `/fargo-match-chart/`.
+The app and API are served from the same Render URL. GitHub Pages is not used because it cannot run the Express server, and FargoRate's division schedule report is a POST request that blocks public CORS proxies.

@@ -124,53 +124,38 @@ app.post('/api/division-schedule', async (req, res) => {
             { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
         );
 
-        // Parse HTML to extract matches using regex
+        // FargoRate returns the schedule as an HTML table.
         const html = response.data;
         const matches = [];
+        const cleanText = (value) => value
+            .replace(/<[^>]+>/g, '')
+            .replace(/&#39;/g, "'")
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .trim();
+        const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+        const cellPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        let rowMatch;
+        while ((rowMatch = rowPattern.exec(html)) !== null) {
+            const row = rowMatch[1];
+            const linkMatch = row.match(/href=['"][^'"]*matchId=([^&'"]+)/i);
+            if (!linkMatch) continue;
 
-        // Match pattern: <div class="schedule-date">DATE</div> followed by match blocks
-        const datePattern = /<div class="schedule-date">([^<]+)<\/div>/g;
-        const matchBlockPattern = /<div class="schedule-team-block" data-url="([^"]+)">[\s\S]*?<span class="schedule-team">([^<]*)<\/span>[\s\S]*?<span class="schedule-team">([^<]*)<\/span>[\s\S]*?<span class="schedule-location">([^<]*)<\/span>/g;
-
-        // Extract dates and their positions
-        const dates = [];
-        let dateMatch;
-        while ((dateMatch = datePattern.exec(html)) !== null) {
-            dates.push({
-                date: dateMatch[1].trim(),
-                index: dateMatch.index
-            });
-        }
-
-        // Extract matches
-        let matchMatch;
-        while ((matchMatch = matchBlockPattern.exec(html)) !== null) {
-            const url = matchMatch[1];
-            const matchIdMatch = url.match(/matchId=([^&]+)/);
-            if (!matchIdMatch) continue;
-
-            const matchId = matchIdMatch[1];
-            const team1 = matchMatch[2].trim();
-            const team2 = matchMatch[3].trim();
-            const location = matchMatch[4].trim();
-
-            // Find the most recent date before this match
-            const matchIndex = matchMatch.index;
-            let currentDate = null;
-            for (let i = dates.length - 1; i >= 0; i--) {
-                if (dates[i].index < matchIndex) {
-                    currentDate = dates[i].date;
-                    break;
-                }
+            const cells = [];
+            let cellMatch;
+            while ((cellMatch = cellPattern.exec(row)) !== null) {
+                cells.push(cleanText(cellMatch[1]));
             }
 
-            matches.push({
-                matchId,
-                team1,
-                team2,
-                location,
-                date: currentDate
-            });
+            if (cells.length >= 2) {
+                matches.push({
+                    matchId: linkMatch[1],
+                    team1: cells[0],
+                    team2: cells[1],
+                    location: cells[2] || '',
+                    date: null
+                });
+            }
         }
 
         res.json(matches);
